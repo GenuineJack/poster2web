@@ -384,6 +384,7 @@
             padding: 32px;
             border-right: 1px solid #f3f4f6;
             overflow-y: auto;
+            max-height: 700px;
         }
 
         .preview-section {
@@ -616,14 +617,11 @@
         }
 
         .section-content {
-            padding: 0;
-            max-height: 0;
-            overflow: hidden;
-            transition: all 0.3s ease;
+            padding: 24;
+            max-height: 10000;
         }
 
         .section-content.expanded {
-            max-height: 3000px;
             padding: 24px;
         }
 
@@ -3433,5 +3431,4 @@ export default function PosterPage() {
         }
     </script>
 </body>
-
 </html>
