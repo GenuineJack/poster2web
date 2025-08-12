@@ -620,7 +620,7 @@
         padding: 0;
         max-height: 0;
         overflow: hidden;
-        transition: all 0.3s ease;
+        transition: max-height 0.3s ease-out, padding 0.3s ease-out; /* Add a specific transition for max-height */
         }
 
         .section-content.expanded {
@@ -3435,4 +3435,5 @@ export default function PosterPage() {
     </script>
 </body>
 </html>
+
 
