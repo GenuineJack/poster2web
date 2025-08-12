@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medical Poster Converter - Transform Research into Beautiful Websites</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%221em%22 font-size=%2216%22>🖥️</text></svg>">
-    <!-- PDF.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
@@ -61,6 +60,7 @@
             right: 20px;
             display: flex;
             gap: 12px;
+            z-index: 100;
         }
 
         .icon-button {
@@ -85,6 +85,32 @@
             color: #16a34a;
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Auto-save indicator */
+        .autosave-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 14px;
+            color: #16a34a;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .autosave-indicator.show {
+            opacity: 1;
+        }
+
+        .autosave-indicator.saving {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            color: #d97706;
         }
 
         /* Upload Screen */
@@ -244,6 +270,8 @@
             cursor: pointer;
             transition: all 0.2s ease;
             text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
         }
 
         .back-button:hover {
@@ -339,6 +367,11 @@
             transform: translateY(-1px);
         }
 
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
         /* Main Content */
         .editor-content {
             display: grid;
@@ -392,43 +425,81 @@
             box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
         }
 
-        .form-textarea {
-            resize: vertical;
-            min-height: 100px;
-            font-family: inherit;
-        }
-
-        .form-textarea[contenteditable="true"] {
-            resize: none;
+        /* Rich Text Editor */
+        .rich-editor {
             border: 1px solid #d1d5db;
             border-radius: 12px;
-            padding: 12px 16px;
+            overflow: hidden;
             background: white;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .toolbar-btn:hover {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+        }
+
+        .toolbar-btn.active {
+            background: #16a34a;
+            color: white;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            background: #d1d5db;
+            margin: 4px 8px;
+        }
+
+        .toolbar-select {
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .editor-content-area {
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 16px;
             font-size: 16px;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
-        .form-textarea[contenteditable="true"]:focus {
+        .editor-content-area:focus {
             outline: none;
-            border-color: #16a34a;
-            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+            background: #fafafa;
         }
 
-        .form-textarea[contenteditable="true"] b {
-            font-weight: bold;
-        }
-
-        .form-textarea[contenteditable="true"] i {
-            font-style: italic;
-        }
-
-        .form-textarea[contenteditable="true"] u {
-            text-decoration: underline;
-        }
-
-        .form-textarea[contenteditable="true"] sup {
-            vertical-align: super;
-            font-size: smaller;
+        .editor-content-area ul,
+        .editor-content-area ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
         }
 
         /* Section Editor */
@@ -483,28 +554,15 @@
             background: #f5f5f5;
         }
 
-        .section-editor.header-section .section-header:hover {
-            background: rgba(255, 255, 255, 0.9);
-        }
-
         .section-title-group {
             display: flex;
             align-items: center;
             gap: 12px;
             flex: 1;
-            position: relative;
         }
 
         .section-icon {
             font-size: 20px;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .section-icon:hover {
-            background: rgba(22, 163, 74, 0.1);
         }
 
         .section-name {
@@ -554,6 +612,8 @@
             color: #9ca3af;
             font-size: 12px;
             margin-left: 8px;
+            transition: transform 0.3s ease;
+            display: inline-block;
         }
 
         .section-content {
@@ -564,84 +624,116 @@
         }
 
         .section-content.expanded {
-            max-height: 1000px;
+            max-height: 3000px;
             padding: 24px;
         }
 
-        /* Icon Picker */
-        .icon-picker {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
+        /* Content Block */
+        .content-block {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .content-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .content-block-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            flex: 1;
+        }
+
+        .content-block-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .content-block-controls .icon-btn {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+        }
+
+        /* Image Container */
+        .image-container {
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
             padding: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 8px;
-            min-width: 320px;
-            margin-top: 8px;
+            margin-bottom: 16px;
         }
 
-        .icon-picker.active {
-            display: grid;
-        }
-
-        .icon-option {
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
+        .image-upload-area {
+            border: 2px dashed #d1d5db;
             border-radius: 8px;
-            font-size: 18px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
             transition: all 0.2s ease;
         }
 
-        .icon-option:hover {
+        .image-upload-area:hover {
+            border-color: #16a34a;
             background: #f0fdf4;
-            transform: scale(1.1);
         }
 
-        /* Toolbar */
-        .toolbar {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 12px;
-            padding: 12px;
-            background: #f9fafb;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-        }
-
-        .toolbar-btn {
-            width: 36px;
-            height: 36px;
-            border: none;
-            background: white;
+        .image-preview {
+            max-width: 100%;
+            height: auto;
             border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 12px;
+        }
+
+        .image-caption-container {
+            margin-top: 12px;
+        }
+
+        .image-caption-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* Add content buttons */
+        .add-content-container {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            padding: 16px;
+            background: #f0fdf4;
+            border: 1px dashed #bbf7d0;
+            border-radius: 12px;
+            justify-content: center;
+        }
+
+        /* HTML toggle */
+        .html-toggle {
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            margin-bottom: 12px;
             font-size: 14px;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            color: #d97706;
         }
 
-        .toolbar-btn:hover {
-            background: #e5e7eb;
-            transform: translateY(-1px);
-        }
-
-        .toolbar-separator {
-            width: 1px;
-            background: #d1d5db;
-            margin: 6px 8px;
+        .html-toggle input[type="checkbox"] {
+            cursor: pointer;
         }
 
         /* Preview */
@@ -884,7 +976,7 @@
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             z-index: 1001;
-            transform: translateX(100%);
+            transform: translateX(400px);
             transition: transform 0.3s ease;
             max-width: 400px;
         }
@@ -952,6 +1044,28 @@
             color: white !important;
         }
 
+        /* PDF Download Button */
+        .download-pdf-btn {
+            background: linear-gradient(135deg, var(--primary-color, #16a34a), var(--secondary-color, #15803d));
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .download-pdf-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .editor-header {
@@ -1011,34 +1125,6 @@
             display: none !important;
         }
 
-        .text-center {
-            text-align: center;
-        }
-
-        .flex {
-            display: flex;
-        }
-
-        .items-center {
-            align-items: center;
-        }
-
-        .justify-between {
-            justify-content: space-between;
-        }
-
-        .gap-2 {
-            gap: 8px;
-        }
-
-        .gap-3 {
-            gap: 12px;
-        }
-
-        .gap-4 {
-            gap: 16px;
-        }
-
         /* Hide file input */
         input[type="file"] {
             display: none;
@@ -1086,13 +1172,23 @@
                 height: 60vh;
             }
         }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
+    <div id="autosaveIndicator" class="autosave-indicator">
+        💾 Auto-saved
+    </div>
+
     <div class="main-content">
-        <!-- Upload Screen -->
         <div id="uploadScreen" class="screen active">
-            <!-- Header Icons -->
             <div class="header-icons">
                 <button class="icon-button" onclick="showInfo()" title="Info">
                     <span>ℹ️</span>
@@ -1103,7 +1199,6 @@
             </div>
 
             <div style="max-width: 1200px; margin: 0 auto; padding: 40px 20px; text-align: center;">
-                <!-- Header -->
                 <header style="margin-bottom: 40px;">
                     <h1 style="font-size: 48px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px; line-height: 1.1;">
                         Medical Poster Converter
@@ -1113,7 +1208,6 @@
                     </p>
                 </header>
 
-                <!-- Upload Area -->
                 <div class="upload-container">
                     <div id="dropZone" class="drop-zone">
                         <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg">
@@ -1130,20 +1224,19 @@
                             </svg>
                         </div>
                         <h3 class="upload-title">Drop your poster here</h3>
-                        <p class="upload-subtitle">or click to browse your files</p>
-                        <button class="browse-button">Choose File</button>
+                        <p class="upload-subtitle">or click anywhere to browse your files</p>
+                        <button type="button" class="browse-button" id="browseBtn">Choose File</button>
                     </div>
                     <div class="upload-formats">
                         Supports PDF, Word (DOCX), Text (TXT), and image files
                     </div>
                 </div>
 
-                <!-- Features -->
                 <div style="margin-top: 80px;">
                     <h2 style="font-size: 32px; font-weight: 700; color: #1a1a1a; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1px;">
                         What You Get
                     </h2>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; max-width: 1000px; margin: 0 auto;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; max-width: 1000px; margin: 0 auto;">
                         <div style="text-align: center;">
                             <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 24px; box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);">
                                 🤖
@@ -1155,15 +1248,15 @@
                             <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 24px; box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);">
                                 ✨
                             </div>
-                            <h4 style="font-weight: 600; color: #1a1a1a; margin-bottom: 12px; font-size: 18px;">Rich Text Editing</h4>
-                            <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">Format text with bold, italic, lists, and custom styling options</p>
+                            <h4 style="font-weight: 600; color: #1a1a1a; margin-bottom: 12px; font-size: 18px;">Advanced Content Editing</h4>
+                            <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">Rich text formatting, images with captions, and HTML embedding</p>
                         </div>
                         <div style="text-align: center;">
                             <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 24px; box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);">
                                 📱
                             </div>
-                            <h4 style="font-weight: 600; color: #1a1a1a; margin-bottom: 12px; font-size: 18px;">Responsive Design</h4>
-                            <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">Beautiful websites that look great on desktop, tablet, and mobile</p>
+                            <h4 style="font-weight: 600; color: #1a1a1a; margin-bottom: 12px; font-size: 18px;">Flexible Layouts</h4>
+                            <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">Mix text and images freely with PDF download button</p>
                         </div>
                         <div style="text-align: center;">
                             <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 24px; box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);">
@@ -1177,18 +1270,15 @@
             </div>
         </div>
 
-        <!-- Loading Screen -->
         <div id="loadingScreen" class="screen loading-screen">
             <div class="loading-container">
                 <div class="loading-spinner"></div>
-                <h2 id="loadingTitle" class="loading-title">Processing your poster...</h2>
+                <h2 id="loadingTitle" class="loading-title">Processing your poster</h2>
                 <p id="loadingMessage" class="loading-message">This may take a moment</p>
             </div>
         </div>
 
-        <!-- Editor Screen -->
         <div id="editorScreen" class="screen">
-            <!-- Header -->
             <div class="editor-header">
                 <button id="backButton" class="back-button">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1210,37 +1300,30 @@
                 </div>
             </div>
 
-            <!-- Tabs -->
             <div class="tabs">
-                <div class="tab active" data-tab="content">📝 Content</div>
-                <div class="tab" data-tab="design">🎨 Design</div>
+                <div class="tab active" data-tab="content" onclick="switchTab('content')">📝 Content</div>
+                <div class="tab" data-tab="design" onclick="switchTab('design')">🎨 Design</div>
             </div>
 
-            <!-- Main Content -->
             <div class="editor-content">
-                <!-- Form Section -->
                 <div class="form-section">
-                    <!-- Content Tab -->
-                    <div id="contentTab" class="tab-content">
-                        <!-- Sections -->
+                    <div id="contentTab" class="tab-content active">
                         <div class="form-group">
                             <div class="sections-header">
                                 <h3 class="sections-title">📑 All Sections</h3>
                                 <button class="btn btn-secondary" onclick="addSection()">+ Add Section</button>
                             </div>
                             <div id="sectionsContainer">
-                                <!-- Dynamic sections will be added here -->
-                            </div>
+                                </div>
                         </div>
                     </div>
 
-                    <!-- Design Tab -->
-                    <div id="designTab" class="tab-content hidden">
+                    <div id="designTab" class="tab-content">
                         <div class="form-group">
                             <label class="form-label">🎨 Color Scheme</label>
                             <select id="colorScheme" class="form-select" onchange="updateColorScheme()">
-                                <option value="clinical">Clinical Blue</option>
                                 <option value="research">Research Green</option>
+                                <option value="clinical">Clinical Blue</option>
                                 <option value="pharma">Pharma Purple</option>
                                 <option value="modern">Modern Teal</option>
                                 <option value="academic">Academic Red</option>
@@ -1251,16 +1334,16 @@
                         <div class="form-group">
                             <label class="form-label">🎨 Primary Color</label>
                             <div class="color-picker">
-                                <input type="color" id="primaryColor" class="color-input" value="#16a34a" onchange="updatePreview()">
-                                <input type="text" id="primaryColorHex" class="form-input" value="#16a34a" onchange="updatePreview()">
+                                <input type="color" id="primaryColor" class="color-input" value="#16a34a" onchange="updatePreview(); document.getElementById('primaryColorHex').value = this.value;">
+                                <input type="text" id="primaryColorHex" class="form-input" value="#16a34a" onchange="document.getElementById('primaryColor').value = this.value; updatePreview();">
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">🎨 Secondary Color</label>
                             <div class="color-picker">
-                                <input type="color" id="secondaryColor" class="color-input" value="#6b7280" onchange="updatePreview()">
-                                <input type="text" id="secondaryColorHex" class="form-input" value="#6b7280" onchange="updatePreview()">
+                                <input type="color" id="secondaryColor" class="color-input" value="#15803d" onchange="updatePreview(); document.getElementById('secondaryColorHex').value = this.value;">
+                                <input type="text" id="secondaryColorHex" class="form-input" value="#15803d" onchange="document.getElementById('secondaryColor').value = this.value; updatePreview();">
                             </div>
                         </div>
 
@@ -1271,6 +1354,23 @@
                                 Upload Logo
                             </button>
                             <div id="logoPreview"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">📏 Logo Size</label>
+                            <div class="range-group">
+                                <input type="range" id="logoSize" class="range-input" min="60" max="200" value="120" onchange="updateLogoSize()">
+                                <span class="range-value" id="logoSizeValue">120px</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">📐 Header Alignment</label>
+                            <select id="headerAlignment" class="form-select" onchange="updatePreview()">
+                                <option value="center">Center</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
                         </div>
 
                         <div class="form-group">
@@ -1299,16 +1399,16 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">📱 Layout</label>
+                            <label class="form-label">📱 Website Layout</label>
                             <select id="layoutStyle" class="form-select" onchange="updatePreview()">
                                 <option value="single">Single Page</option>
                                 <option value="sections">Section Navigation</option>
+                                <option value="menu">Hamburger Menu</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- Preview Section -->
                 <div class="preview-section">
                     <div class="preview-container">
                         <div class="preview-header">
@@ -1326,7 +1426,6 @@
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="footer-content">
             <div>
@@ -1338,7 +1437,6 @@
         </div>
     </footer>
 
-    <!-- Preview Modal -->
     <div id="previewModal" class="modal">
         <div class="modal-content large">
             <div class="modal-header">
@@ -1369,7 +1467,6 @@
         </div>
     </div>
 
-    <!-- Export Modal -->
     <div id="exportModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeExportModal()">×</button>
@@ -1381,7 +1478,7 @@
                     <input type="radio" name="exportFormat" value="html" checked> 
                     <div>
                         <div class="export-option-title">Standalone HTML</div>
-                        <div class="export-option-desc">Single file ready to deploy anywhere</div>
+                        <div class="export-option-desc">Single file ready to deploy anywhere with PDF download</div>
                     </div>
                 </label>
                 <label class="export-option">
@@ -1400,837 +1497,909 @@
                 </label>
             </div>
             
-            <div class="flex gap-3">
+            <div style="display: flex; gap: 12px;">
                 <button class="btn btn-secondary" onclick="closeExportModal()" style="flex: 1;">Cancel</button>
                 <button class="btn btn-primary" onclick="downloadWebsite()" style="flex: 1;">Download Code</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
 
     <script>
-        // State management
-        let extractedData = {
+        // Initialize app
+        let currentProject = {
+            title: 'My Research Poster',
+            authors: [],
             sections: [],
-            logo: null,
-            primaryColor: '#16a34a',
-            secondaryColor: '#6b7280',
-            fontStyle: 'system',
-            layoutStyle: 'single',
-            titleSize: 32,
-            contentSize: 16
+            logoUrl: null
         };
 
-        let currentStep = 1;
-        let uploadedFile = null;
-        let expandedSections = {};
-        let currentIconPicker = null;
+        // Get DOM elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const uploadScreen = document.getElementById('uploadScreen');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const editorScreen = document.getElementById('editorScreen');
+        const pdfName = document.getElementById('pdfName');
+        const backButton = document.getElementById('backButton');
+        const toast = document.getElementById('toast');
 
-        // Available icons for sections
-        const availableIcons = ['📌', '👥', '🏛️', '🎯', '📄', '🔬', '🧪', '📊', '💡', '📈', '🧬', '💊', '🔍', '📋', '🏥', '⚕️', '🧫', '🩺', '📐', '💉'];
+        // Add missing helper functions
+        function showInfo() {
+            alert('Medical Poster Converter v1.0\n\nTransform your research posters into beautiful websites!\n\nSupported formats: PDF, Word, Text, and Images');
+        }
 
-        // Color schemes
-        const colorSchemes = {
-            clinical: { primary: '#3498db', secondary: '#2c3e50' },
-            research: { primary: '#27ae60', secondary: '#16a085' },
-            pharma: { primary: '#8e44ad', secondary: '#6c3483' },
-            modern: { primary: '#17a2b8', secondary: '#138496' },
-            academic: { primary: '#e74c3c', secondary: '#c0392b' },
-            custom: { primary: '#16a34a', secondary: '#6b7280' }
-        };
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            setupFileUpload();
-            setupTabs();
-            setupRangeSliders();
-            updatePreview();
-            
-            // Close icon picker when clicking outside
-            document.addEventListener('click', function(e) {
-                if (currentIconPicker && !e.target.closest('.section-icon') && !e.target.closest('.icon-picker')) {
-                    closeIconPicker();
+        function goHome() {
+            if (editorScreen.classList.contains('active')) {
+                if (confirm('Are you sure you want to go home? Any unsaved changes will be lost.')) {
+                    editorScreen.classList.remove('active');
+                    uploadScreen.classList.add('active');
+                    currentProject = { title: 'My Research Poster', authors: [], sections: [], logoUrl: null };
+                    fileInput.value = '';
                 }
-            });
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // File upload event listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        browseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+        
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFile(e.dataTransfer.files[0]);
         });
 
-        function setupFileUpload() {
-            const dropZone = document.getElementById('dropZone');
-            const fileInput = document.getElementById('fileInput');
-            const browseButton = dropZone.querySelector('.browse-button');
+        // Back button
+        backButton.addEventListener('click', () => {
+            if (confirm('Are you sure you want to start over? All changes will be lost.')) {
+                editorScreen.classList.remove('active');
+                uploadScreen.classList.add('active');
+                currentProject = { title: 'My Research Poster', authors: [], sections: [], logoUrl: null };
+                fileInput.value = '';
+            }
+        });
 
-            // Click handlers
-            dropZone.addEventListener('click', () => fileInput.click());
-            browseButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                fileInput.click();
-            });
+        // =======================================================
+        // UPDATED FILE HANDLING LOGIC
+        // =======================================================
+        
+        function handleFile(file) {
+            if (!file) return;
 
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleFileUpload(e.target.files[0]);
-                }
-            });
-
-            // Drag and drop
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('drag-over');
-            });
-
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('drag-over');
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('drag-over');
-                if (e.dataTransfer.files.length > 0) {
-                    handleFileUpload(e.dataTransfer.files[0]);
-                }
-            });
-        }
-
-        function setupTabs() {
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const tabName = this.getAttribute('data-tab');
-                    switchTab(tabName);
-                });
-            });
-        }
-
-        function setupRangeSliders() {
-            const titleSlider = document.getElementById('titleSize');
-            const contentSlider = document.getElementById('contentSize');
+            // Show loading screen
+            uploadScreen.classList.remove('active');
+            loadingScreen.classList.add('active');
             
-            titleSlider.addEventListener('input', updateTitleSize);
-            contentSlider.addEventListener('input', updateContentSize);
+            // This is a simple implementation. In a real-world app, you might use a more robust parser.
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+
+            switch (fileExtension) {
+                case 'pdf':
+                    handlePDF(file);
+                    break;
+                case 'docx':
+                    showToast('DOCX file processing is not yet implemented.', 'error');
+                    resetUploadState();
+                    break;
+                case 'txt':
+                    handleText(file);
+                    break;
+                case 'png':
+                case 'jpg':
+                case 'jpeg':
+                    handleImage(file);
+                    break;
+                default:
+                    showToast('Unsupported file format.', 'error');
+                    resetUploadState();
+                    break;
+            }
         }
 
-        function switchTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-                if (tab.getAttribute('data-tab') === tabName) {
-                    tab.classList.add('active');
+        function handlePDF(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(e.target.result) });
+                loadingTask.promise.then(function(pdf) {
+                    let extractedText = '';
+                    const promises = [];
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        promises.push(pdf.getPage(i).then(function(page) {
+                            return page.getTextContent().then(function(textContent) {
+                                extractedText += textContent.items.map(item => item.str).join(' ');
+                            });
+                        }));
+                    }
+                    Promise.all(promises).then(() => {
+                        currentProject.sections = parseTextIntoSections(extractedText, file.name);
+                        showEditor(file.name);
+                    }).catch(function(reason) {
+                        console.error('Error getting text content from PDF:', reason);
+                        showToast('Failed to extract text from PDF.', 'error');
+                        resetUploadState();
+                    });
+                }).catch(function(reason) {
+                    console.error('Error loading PDF:', reason);
+                    showToast('Failed to process PDF file.', 'error');
+                    resetUploadState();
+                });
+            };
+            reader.onerror = function() {
+                showToast('Failed to read PDF file.', 'error');
+                resetUploadState();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function handleText(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                currentProject.sections = parseTextIntoSections(text, file.name);
+                showEditor(file.name);
+            };
+            reader.onerror = function() {
+                showToast('Failed to read text file.', 'error');
+                resetUploadState();
+            };
+            reader.readAsText(file);
+        }
+
+        function handleImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentProject.sections = [
+                    {
+                        id: 'header',
+                        icon: '🖼️',
+                        name: 'Image Poster',
+                        isHeader: true,
+                        content: [
+                            { type: 'text', value: `<h1>${file.name}</h1>`, allowHtml: false }
+                        ]
+                    },
+                    {
+                        id: 'image-section',
+                        icon: '📷',
+                        name: 'Poster Image',
+                        isHeader: false,
+                        content: [
+                            { type: 'image', url: e.target.result, caption: file.name }
+                        ]
+                    }
+                ];
+                showEditor(file.name);
+            };
+            reader.onerror = function() {
+                showToast('Failed to read image file.', 'error');
+                resetUploadState();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showEditor(fileName) {
+            loadingScreen.classList.remove('active');
+            editorScreen.classList.add('active');
+            pdfName.textContent = fileName;
+            renderSections();
+            updatePreview();
+            showToast('File uploaded and processed successfully!', 'success');
+        }
+
+        function resetUploadState() {
+            loadingScreen.classList.remove('active');
+            uploadScreen.classList.add('active');
+            fileInput.value = '';
+        }
+
+        // A simple text parser to create sections based on common headings
+        function parseTextIntoSections(text, fileName) {
+            const sections = [
+                {
+                    id: 'header',
+                    icon: '🏥',
+                    name: 'Header',
+                    isHeader: true,
+                    content: [
+                        { type: 'text', value: `<h1>${fileName}</h1><p>Authors and Affiliations</p>`, allowHtml: false }
+                    ]
                 }
-            });
+            ];
 
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-            document.getElementById(tabName + 'Tab').classList.remove('hidden');
-        }
-
-        function handleFileUpload(file) {
-            const validTypes = [
-                'application/pdf', 
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'text/plain',
-                'image/png', 
-                'image/jpeg', 
-                'image/jpg'
+            const headings = [
+                'abstract', 'introduction', 'background', 'methods', 'results', 'discussion', 'conclusion', 'references'
             ];
             
-            if (!validTypes.includes(file.type)) {
-                showToast('Please upload a PDF, Word, Text, or image file', 'error');
-                return;
-            }
+            const lines = text.split(/[\r\n]+/).map(line => line.trim()).filter(line => line.length > 0);
+            let currentSection = null;
+            let currentContent = '';
 
-            uploadedFile = file;
-            processFile(file);
-        }
+            for (const line of lines) {
+                const lowerLine = line.toLowerCase();
+                const isHeading = headings.find(h => lowerLine.startsWith(h) && line.length < 50);
 
-        async function processFile(file) {
-            showLoadingScreen();
-
-            if (file.type === 'application/pdf' && typeof pdfjsLib !== 'undefined') {
-                await extractPDFContent(file);
-            } else {
-                setTimeout(() => {
-                    createEmptyTemplate();
-                    showEditorScreen();
-                    if (file.type.startsWith('image/')) {
-                        showToast('Image uploaded! Please manually enter your poster content.', 'success');
-                    } else {
-                        showToast('File uploaded! Please fill in your poster details.', 'success');
+                if (isHeading) {
+                    if (currentSection && currentContent.length > 0) {
+                        currentSection.content.push({ type: 'text', value: currentContent.trim(), allowHtml: false });
                     }
-                }, 1500);
+                    currentSection = {
+                        id: isHeading,
+                        icon: getIconForSection(isHeading),
+                        name: capitalizeFirstLetter(isHeading),
+                        content: []
+                    };
+                    sections.push(currentSection);
+                    currentContent = '';
+                } else if (currentSection) {
+                    currentContent += `<p>${line}</p>`;
+                }
             }
+
+            if (currentSection && currentContent.length > 0) {
+                currentSection.content.push({ type: 'text', value: currentContent.trim(), allowHtml: false });
+            }
+
+            // If no sections were found, put everything in one "Content" section
+            if (sections.length <= 1 && text.length > 0) {
+                sections.push({
+                    id: 'content',
+                    icon: '📝',
+                    name: 'Content',
+                    content: [{ type: 'text', value: `<p>${text}</p>`, allowHtml: false }]
+                });
+            }
+
+            return sections;
         }
 
-        function showLoadingScreen() {
-            document.getElementById('uploadScreen').classList.remove('active');
-            document.getElementById('loadingScreen').classList.add('active');
+        function getIconForSection(name) {
+            const icons = {
+                'abstract': '📄', 'introduction': '📖', 'background': '📚', 'methods': '🔬',
+                'results': '📊', 'discussion': '💬', 'conclusion': '✅', 'references': '🔗'
+            };
+            return icons[name] || '📝';
         }
 
-        function showEditorScreen() {
-            document.getElementById('loadingScreen').classList.remove('active');
-            document.getElementById('editorScreen').classList.add('active');
-            populateForm();
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+        
+        // =======================================================
+        // END UPDATED FILE HANDLING LOGIC
+        // =======================================================
+
+
+        // Initialize editor with sample sections
+        function initializeEditor() {
+            // Add sample sections
+            currentProject.sections = [
+                {
+                    id: 'header',
+                    icon: '🏥',
+                    name: 'Header',
+                    isHeader: true,
+                    content: [
+                        { type: 'text', value: '<h1>Research Poster Title</h1><p>Authors and Affiliations</p>', allowHtml: false }
+                    ]
+                },
+                {
+                    id: 'abstract',
+                    icon: '📄',
+                    name: 'Abstract',
+                    content: [
+                        { type: 'text', value: 'Your abstract content here...', allowHtml: false }
+                    ]
+                },
+                {
+                    id: 'introduction',
+                    icon: '📖',
+                    name: 'Introduction',
+                    content: [
+                        { type: 'text', value: 'Introduction content...', allowHtml: false }
+                    ]
+                },
+                {
+                    id: 'methods',
+                    icon: '🔬',
+                    name: 'Methods',
+                    content: [
+                        { type: 'text', value: 'Methods description...', allowHtml: false }
+                    ]
+                },
+                {
+                    id: 'results',
+                    icon: '📊',
+                    name: 'Results',
+                    content: [
+                        { type: 'text', value: 'Results and findings...', allowHtml: false }
+                    ]
+                },
+                {
+                    id: 'conclusion',
+                    icon: '✅',
+                    name: 'Conclusion',
+                    content: [
+                        { type: 'text', value: 'Conclusion and future work...', allowHtml: false }
+                    ]
+                }
+            ];
+            
+            renderSections();
+            
+            // Auto-expand the first non-header section
+            const firstSection = currentProject.sections.find(s => !s.isHeader);
+            if (firstSection) {
+                const sectionContent = document.getElementById(`section-${firstSection.id}`);
+                if (sectionContent) {
+                    sectionContent.classList.add('expanded');
+                    const section = document.querySelector(`.section-editor[data-id="${firstSection.id}"]`);
+                    const indicator = section.querySelector('.expand-indicator');
+                    if (indicator) {
+                        indicator.style.transform = 'rotate(180deg)';
+                    }
+                }
+            }
+            
             updatePreview();
         }
 
-        async function extractPDFContent(file) {
-            try {
-                document.getElementById('loadingTitle').textContent = 'Extracting PDF Content...';
-                document.getElementById('loadingMessage').textContent = 'Reading PDF file...';
-                
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                
-                let fullText = '';
-                const totalPages = pdf.numPages;
-                
-                for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-                    document.getElementById('loadingMessage').textContent = `Extracting page ${pageNum} of ${totalPages}...`;
-                    
-                    const page = await pdf.getPage(pageNum);
-                    const textContent = await page.getTextContent();
-                    
-                    let pageText = '';
-                    let lastY = null;
-                    let currentLine = '';
-                    let lines = [];
-                    
-                    const sortedItems = textContent.items.sort((a, b) => {
-                        const yDiff = b.transform[5] - a.transform[5];
-                        if (Math.abs(yDiff) > 2) return yDiff;
-                        return a.transform[4] - b.transform[4];
-                    });
-                    
-                    sortedItems.forEach((item) => {
-                        const text = item.str;
-                        if (!text || !text.trim()) return;
-                        
-                        const currentY = item.transform[5];
-                        
-                        if (lastY !== null && Math.abs(currentY - lastY) > 2) {
-                            if (currentLine.trim()) {
-                                lines.push(currentLine.trim());
-                            }
-                            currentLine = text;
-                        } else {
-                            if (currentLine && !currentLine.endsWith(' ') && !text.startsWith(' ')) {
-                                currentLine += ' ';
-                            }
-                            currentLine += text;
-                        }
-                        
-                        lastY = currentY;
-                    });
-                    
-                    if (currentLine.trim()) {
-                        lines.push(currentLine.trim());
-                    }
-                    
-                    pageText = lines.join('\n');
-                    fullText += pageText + '\n\n';
-                }
-                
-                document.getElementById('loadingMessage').textContent = 'Analyzing content...';
-                parseExtractedText(fullText);
-                
-                setTimeout(() => {
-                    showEditorScreen();
-                    showToast('PDF content extracted successfully! Please review and edit as needed.', 'success');
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error extracting PDF:', error);
-                createEmptyTemplate();
-                showEditorScreen();
-                showToast('Unable to extract text from this PDF. Please manually enter your content.', 'error');
-            }
+        // Create unique ID
+        function createUniqueId() {
+            return 'id-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
         }
 
-        function parseExtractedText(text) {
-            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-            
-            // Initialize with header sections first
-            extractedData.sections = [
-                {
-                    id: Date.now() + 1,
-                    title: 'Title',
-                    content: '',
-                    icon: '📌',
-                    image: null,
-                    isHeader: true,
-                    type: 'title'
-                },
-                {
-                    id: Date.now() + 2,
-                    title: 'Authors',
-                    content: '',
-                    icon: '👥',
-                    image: null,
-                    isHeader: true,
-                    type: 'authors'
-                },
-                {
-                    id: Date.now() + 3,
-                    title: 'Affiliations',
-                    content: '',
-                    icon: '🏛️',
-                    image: null,
-                    isHeader: true,
-                    type: 'affiliations'
-                },
-                {
-                    id: Date.now() + 4,
-                    title: 'Conference',
-                    content: '',
-                    icon: '🎯',
-                    image: null,
-                    isHeader: true,
-                    type: 'conference'
-                }
-            ];
-            
-            // Find title
-            for (let i = 0; i < Math.min(5, lines.length); i++) {
-                if (lines[i].length > 20 && lines[i].length < 200 && !lines[i].includes(',')) {
-                    extractedData.sections[0].content = lines[i].replace(/\n/g, '<br>');
-                    break;
-                }
-            }
-            
-            // Find authors
-            const titleIndex = lines.findIndex(line => line === extractedData.sections[0].content.replace(/<br>/g, '\n'));
-            if (titleIndex !== -1) {
-                for (let i = titleIndex + 1; i < Math.min(titleIndex + 10, lines.length); i++) {
-                    if (lines[i].includes(',') && lines[i].length > 20) {
-                        extractedData.sections[1].content = lines[i].replace(/\n/g, '<br>');
-                        break;
-                    }
-                }
-            }
-            
-            // Find affiliations
-            const institutionKeywords = /university|hospital|institute|center|department|school|college|clinic|laboratory/i;
-            const affiliationLines = lines.filter(line => 
-                institutionKeywords.test(line) && line.length > 20
-            ).slice(0, 3);
-            if (affiliationLines.length > 0) {
-                extractedData.sections[2].content = affiliationLines.join('; ').replace(/\n/g, '<br>');
-            }
-            
-            // Find conference
-            const conferenceKeywords = /presented at|conference|meeting|symposium|congress|annual|poster/i;
-            const conferenceLine = lines.find(line => 
-                conferenceKeywords.test(line) && line.length > 20
-            );
-            if (conferenceLine) {
-                extractedData.sections[3].content = conferenceLine.replace(/\n/g, '<br>');
-            }
-            
-            // Extract content sections
-            const sectionKeywords = [
-                { keywords: /abstract/i, title: 'Abstract', icon: '📄' },
-                { keywords: /introduction|background/i, title: 'Background', icon: '🔬' },
-                { keywords: /objective|aim|purpose|goal/i, title: 'Objectives', icon: '🎯' },
-                { keywords: /method/i, title: 'Methods', icon: '🧪' },
-                { keywords: /result/i, title: 'Results', icon: '📊' },
-                { keywords: /discussion/i, title: 'Discussion', icon: '💭' },
-                { keywords: /conclusion/i, title: 'Conclusions', icon: '💡' },
-                { keywords: /reference/i, title: 'References', icon: '📚' }
-            ];
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                
-                for (const { keywords, title, icon } of sectionKeywords) {
-                    if (keywords.test(line)) {
-                        let content = '';
-                        let j = i + 1;
-                        
-                        while (j < lines.length && j < i + 30) {
-                            const nextLine = lines[j];
-                            const isNewSection = sectionKeywords.some(sk => sk.keywords.test(nextLine));
-                            if (isNewSection) break;
-                            
-                            if (nextLine.length > 10) {
-                                content += nextLine + '\n';
-                            }
-                            j++;
-                        }
-                        
-                        if (content.trim()) {
-                            extractedData.sections.push({
-                                id: Date.now() + Math.random(),
-                                title: title,
-                                content: content.trim().replace(/\n/g, '<br>'),
-                                icon: icon,
-                                image: null,
-                                isHeader: false
-                            });
-                        }
-                        break;
-                    }
-                }
-            }
-            
-            // If no content sections found, add default ones
-            const contentSections = extractedData.sections.filter(s => !s.isHeader);
-            if (contentSections.length === 0) {
-                extractedData.sections.push(
-                    {
-                        id: Date.now() + 10,
-                        title: 'Background',
-                        content: '',
-                        icon: '🔬',
-                        image: null,
-                        isHeader: false
-                    },
-                    {
-                        id: Date.now() + 11,
-                        title: 'Methods',
-                        content: '',
-                        icon: '🧪',
-                        image: null,
-                        isHeader: false
-                    },
-                    {
-                        id: Date.now() + 12,
-                        title: 'Results',
-                        content: '',
-                        icon: '📊',
-                        image: null,
-                        isHeader: false
-                    },
-                    {
-                        id: Date.now() + 13,
-                        title: 'Conclusions',
-                        content: '',
-                        icon: '💡',
-                        image: null,
-                        isHeader: false
-                    }
-                );
-            }
-            
-            // Set all sections as expanded by default
-            extractedData.sections.forEach(section => {
-                expandedSections[section.id] = true;
-            });
-        }
-
-        function createEmptyTemplate() {
-            extractedData = {
-                sections: [
-                    {
-                        id: Date.now() + 1,
-                        title: 'Title',
-                        content: '',
-                        icon: '📌',
-                        image: null,
-                        isHeader: true,
-                        type: 'title'
-                    },
-                    {
-                        id: Date.now() + 2,
-                        title: 'Authors',
-                        content: '',
-                        icon: '👥',
-                        image: null,
-                        isHeader: true,
-                        type: 'authors'
-                    },
-                    {
-                        id: Date.now() + 3,
-                        title: 'Affiliations',
-                        content: '',
-                        icon: '🏛️',
-                        image: null,
-                        isHeader: true,
-                        type: 'affiliations'
-                    },
-                    {
-                        id: Date.now() + 4,
-                        title: 'Conference',
-                        content: '',
-                        icon: '🎯',
-                        image: null,
-                        isHeader: true,
-                        type: 'conference'
-                    },
-                    {
-                        id: Date.now() + 10,
-                        title: 'Background',
-                        content: '',
-                        icon: '🔬',
-                        image: null,
-                        isHeader: false
-                    },
-                    {
-                        id: Date.now() + 11,
-                        title: 'Methods',
-                        content: '',
-                        icon: '🧪',
-                        image: null,
-                        isHeader: false
-                    },
-                    {
-                        id: Date.now() + 12,
-                        title: 'Results',
-                        content: '',
-                        icon: '📊',
-                        image: null,
-                        isHeader: false
-                    },
-                    {
-                        id: Date.now() + 13,
-                        title: 'Conclusions',
-                        content: '',
-                        icon: '💡',
-                        image: null,
-                        isHeader: false
-                    }
-                ],
-                logo: null,
-                primaryColor: '#16a34a',
-                secondaryColor: '#6b7280',
-                fontStyle: 'system',
-                layoutStyle: 'single',
-                titleSize: 32,
-                contentSize: 16
-            };
-            
-            extractedData.sections.forEach(section => {
-                expandedSections[section.id] = true;
-            });
-        }
-
-        function populateForm() {
-            document.getElementById('pdfName').textContent = uploadedFile ? uploadedFile.name : '';
-            populateSections();
-        }
-
-        function populateSections() {
+        // Render sections in the editor
+        function renderSections() {
             const container = document.getElementById('sectionsContainer');
+            
+            // Store expanded states before re-rendering
+            const expandedStates = {};
+            currentProject.sections.forEach(section => {
+                const sectionContent = document.getElementById(`section-${section.id}`);
+                if (sectionContent) {
+                    expandedStates[section.id] = sectionContent.classList.contains('expanded');
+                }
+            });
+            
             container.innerHTML = '';
             
-            extractedData.sections.forEach((section, index) => {
-                addSectionElement(section, index);
+            currentProject.sections.forEach((section, sectionIndex) => {
+                const sectionElement = document.createElement('div');
+                sectionElement.className = `section-editor ${section.isHeader ? 'header-section' : ''}`;
+                sectionElement.dataset.id = section.id;
+                
+                let contentHtml = '';
+                section.content.forEach((content, contentIndex) => {
+                    if (content.type === 'text') {
+                        contentHtml += `
+                            <div class="content-block" data-content-id="${content.id || createUniqueId()}">
+                                <div class="content-block-header">
+                                    <div class="content-block-title">📝 Text Block ${contentIndex + 1}</div>
+                                    <div class="content-block-controls">
+                                        <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'up')" ${contentIndex === 0 ? 'disabled' : ''}>↑</button>
+                                        <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'down')" ${contentIndex === section.content.length - 1 ? 'disabled' : ''}>↓</button>
+                                        <button class="icon-btn danger" onclick="deleteContent(${sectionIndex}, ${contentIndex})">🗑</button>
+                                    </div>
+                                </div>
+                                <div class="html-toggle">
+                                    <input type="checkbox" id="html-${sectionIndex}-${contentIndex}" ${content.allowHtml ? 'checked' : ''} 
+                                           onchange="toggleHtml(${sectionIndex}, ${contentIndex}, this.checked)">
+                                    <label for="html-${sectionIndex}-${contentIndex}">⚠️ Enable HTML (Advanced)</label>
+                                </div>
+                                <div class="rich-editor">
+                                    <div class="editor-toolbar" id="toolbar-${sectionIndex}-${contentIndex}">
+                                        <button class="toolbar-btn" onclick="formatText('bold', ${sectionIndex}, ${contentIndex})" title="Bold"><b>B</b></button>
+                                        <button class="toolbar-btn" onclick="formatText('italic', ${sectionIndex}, ${contentIndex})" title="Italic"><i>I</i></button>
+                                        <button class="toolbar-btn" onclick="formatText('underline', ${sectionIndex}, ${contentIndex})" title="Underline"><u>U</u></button>
+                                        <div class="toolbar-separator"></div>
+                                        <button class="toolbar-btn" onclick="formatText('insertUnorderedList', ${sectionIndex}, ${contentIndex})" title="Bullet List">•</button>
+                                        <button class="toolbar-btn" onclick="formatText('insertOrderedList', ${sectionIndex}, ${contentIndex})" title="Numbered List">1.</button>
+                                        <div class="toolbar-separator"></div>
+                                        <button class="toolbar-btn" onclick="formatText('superscript', ${sectionIndex}, ${contentIndex})" title="Superscript">X²</button>
+                                        <button class="toolbar-btn" onclick="formatText('subscript', ${sectionIndex}, ${contentIndex})" title="Subscript">X₂</button>
+                                        <div class="toolbar-separator"></div>
+                                        <button class="toolbar-btn" onclick="insertLink(${sectionIndex}, ${contentIndex})" title="Insert Link">🔗</button>
+                                        <div class="toolbar-separator"></div>
+                                        <select class="toolbar-select" onchange="formatText('fontSize', ${sectionIndex}, ${contentIndex}, this.value)">
+                                            <option value="">Size</option>
+                                            <option value="1">Small</option>
+                                            <option value="3">Normal</option>
+                                            <option value="5">Large</option>
+                                            <option value="7">X-Large</option>
+                                        </select>
+                                    </div>
+                                    <div class="editor-content-area" 
+                                         contenteditable="true" 
+                                         id="editor-${sectionIndex}-${contentIndex}"
+                                         onblur="updateContentValue(${sectionIndex}, ${contentIndex}, this.innerHTML)">${content.value}</div>
+                                </div>
+                            </div>
+                        `;
+                    } else if (content.type === 'image') {
+                        contentHtml += `
+                            <div class="content-block" data-content-id="${content.id || createUniqueId()}">
+                                <div class="content-block-header">
+                                    <div class="content-block-title">🖼️ Image Block ${contentIndex + 1}</div>
+                                    <div class="content-block-controls">
+                                        <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'up')" ${contentIndex === 0 ? 'disabled' : ''}>↑</button>
+                                        <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'down')" ${contentIndex === section.content.length - 1 ? 'disabled' : ''}>↓</button>
+                                        <button class="icon-btn danger" onclick="deleteContent(${sectionIndex}, ${contentIndex})">🗑</button>
+                                    </div>
+                                </div>
+                                <div class="image-container">
+                                    ${content.url ? 
+                                        `<img src="${content.url}" class="image-preview" alt="Section image">` :
+                                        `<div class="image-upload-area" onclick="document.getElementById('img-${sectionIndex}-${contentIndex}').click()">
+                                            <div>📷 Click to upload image</div>
+                                        </div>`
+                                    }
+                                    <input type="file" id="img-${sectionIndex}-${contentIndex}" accept="image/*" 
+                                           onchange="handleImageUpload(${sectionIndex}, ${contentIndex}, event)">
+                                    <div class="image-caption-container">
+                                        <label class="image-caption-label">Caption:</label>
+                                        <div class="rich-editor">
+                                            <div class="editor-toolbar">
+                                                <button class="toolbar-btn" onclick="formatCaption('bold', ${sectionIndex}, ${contentIndex})" title="Bold"><b>B</b></button>
+                                                <button class="toolbar-btn" onclick="formatCaption('italic', ${sectionIndex}, ${contentIndex})" title="Italic"><i>I</i></button>
+                                                <button class="toolbar-btn" onclick="formatCaption('underline', ${sectionIndex}, ${contentIndex})" title="Underline"><u>U</u></button>
+                                                <button class="toolbar-btn" onclick="formatCaption('superscript', ${sectionIndex}, ${contentIndex})" title="Superscript">X²</button>
+                                                <button class="toolbar-btn" onclick="insertCaptionLink(${sectionIndex}, ${contentIndex})" title="Insert Link">🔗</button>
+                                            </div>
+                                            <div class="editor-content-area" 
+                                                 contenteditable="true" 
+                                                 id="caption-${sectionIndex}-${contentIndex}"
+                                                 style="min-height: 60px;"
+                                                 onblur="updateImageCaption(${sectionIndex}, ${contentIndex}, this.innerHTML)">${content.caption || 'Enter caption here...'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                sectionElement.innerHTML = `
+                    <div class="section-header" onclick="toggleSection('${section.id}')">
+                        <div class="section-title-group">
+                            <span class="section-icon">${section.icon}</span>
+                            <span class="section-name">${section.name}</span>
+                            <span class="expand-indicator">▼</span>
+                        </div>
+                        <div class="section-controls">
+                            <button class="icon-btn" onclick="event.stopPropagation(); moveSection(${sectionIndex}, 'up')" ${sectionIndex === 0 ? 'disabled' : ''}>↑</button>
+                            <button class="icon-btn" onclick="event.stopPropagation(); moveSection(${sectionIndex}, 'down')" ${sectionIndex === currentProject.sections.length - 1 ? 'disabled' : ''}>↓</button>
+                            <button class="icon-btn danger" onclick="event.stopPropagation(); deleteSection(${sectionIndex})">🗑</button>
+                        </div>
+                    </div>
+                    <div class="section-content" id="section-${section.id}">
+                        <div class="form-group">
+                            <label class="form-label">Section Name</label>
+                            <input type="text" class="form-input" value="${section.name}" onchange="updateSectionName(${sectionIndex}, this.value)">
+                        </div>
+                        
+                        ${contentHtml}
+                        
+                        <div class="add-content-container">
+                            <button class="btn btn-small btn-secondary" onclick="addTextToSection(${sectionIndex})">
+                                + Add Text
+                            </button>
+                            <button class="btn btn-small btn-secondary" onclick="addImageToSection(${sectionIndex})">
+                                + Add Image
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(sectionElement);
+                
+                // Restore expanded state
+                if (expandedStates[section.id]) {
+                    const sectionContent = document.getElementById(`section-${section.id}`);
+                    if (sectionContent) {
+                        sectionContent.classList.add('expanded');
+                        // Update indicator rotation
+                        const indicator = sectionElement.querySelector('.expand-indicator');
+                        if (indicator) {
+                            indicator.style.transform = 'rotate(180deg)';
+                        }
+                    }
+                }
             });
         }
 
-        function addSectionElement(section, index) {
-            const container = document.getElementById('sectionsContainer');
-            const sectionDiv = document.createElement('div');
-            sectionDiv.className = 'section-editor' + (section.isHeader ? ' header-section' : '');
-            sectionDiv.dataset.sectionId = section.id;
-            
-            const isFirst = index === 0;
-            const isLast = index === extractedData.sections.length - 1;
-            const isExpanded = expandedSections[section.id] !== false;
-            
-            sectionDiv.innerHTML = `
-                <div class="section-header" onclick="toggleSection(${section.id})">
-                    <div class="section-title-group">
-                        <span class="section-icon" onclick="event.stopPropagation(); toggleIconPicker(${section.id})" title="Click to change icon">${section.icon || '📄'}</span>
-                        <span class="section-name">${section.title}${section.isHeader ? ' (Header)' : ''}</span>
-                        <span class="expand-indicator">${isExpanded ? '▼' : '▶'}</span>
-                        <div class="icon-picker" id="iconPicker-${section.id}">
-                            ${availableIcons.map(icon => `
-                                <div class="icon-option" onclick="selectIcon(${section.id}, '${icon}')">${icon}</div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <div class="section-controls">
-                        <button class="icon-btn" onclick="event.stopPropagation(); moveSection(${index}, -1)" ${isFirst ? 'disabled' : ''}>↑</button>
-                        <button class="icon-btn" onclick="event.stopPropagation(); moveSection(${index}, 1)" ${isLast ? 'disabled' : ''}>↓</button>
-                        ${!section.isHeader ? `<button class="icon-btn danger" onclick="event.stopPropagation(); removeSection(${section.id})">×</button>` : ''}
-                    </div>
-                </div>
-                <div class="section-content ${isExpanded ? 'expanded' : ''}">
-                    <div style="position: relative;">
-                        <div class="form-group">
-                            <label class="form-label">Section Title</label>
-                            <input type="text" class="form-input" value="${section.title}" onchange="updateSection(${section.id}, 'title', this.value)">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Content</label>
-                            <div class="toolbar">
-                                <button class="toolbar-btn" onclick="formatText(${section.id}, 'bold')" title="Bold"><b>B</b></button>
-                                <button class="toolbar-btn" onclick="formatText(${section.id}, 'italic')" title="Italic"><i>I</i></button>
-                                <button class="toolbar-btn" onclick="formatText(${section.id}, 'underline')" title="Underline"><u>U</u></button>
-                                <div class="toolbar-separator"></div>
-                                <button class="toolbar-btn" onclick="insertList(${section.id}, 'bullet')" title="Bullet List">•</button>
-                                <button class="toolbar-btn" onclick="insertList(${section.id}, 'number')" title="Numbered List">1</button>
-                                <button class="toolbar-btn" onclick="formatText(${section.id}, 'superscript')" title="Superscript">^</button>
-                            </div>
-                            <div id="sectionContent-${section.id}" 
-                                 class="form-textarea" 
-                                 contenteditable="true" 
-                                 style="min-height: 120px; max-height: 300px; overflow-y: auto; white-space: pre-wrap;" 
-                                 oninput="updateSectionFromDiv(${section.id})"
-                                 onpaste="handlePaste(event, ${section.id})">${section.content}</div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Image (optional)</label>
-                            <input type="file" id="sectionImage-${section.id}" accept="image/*" onchange="handleSectionImage(${section.id}, event)">
-                            <button class="btn btn-secondary" onclick="document.getElementById('sectionImage-${section.id}').click()">
-                                📷 Upload Image
-                            </button>
-                            ${section.image ? `
-                                <div style="margin-top: 16px;">
-                                    <img src="${section.image}" alt="Section image" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                                    <br>
-                                    <button class="btn btn-secondary" onclick="removeSectionImage(${section.id})" style="margin-top: 12px; color: #ef4444;">Remove Image</button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            container.appendChild(sectionDiv);
-            
-            // Set the innerHTML for the contentEditable div after it's added to DOM
-            const contentDiv = document.getElementById(`sectionContent-${section.id}`);
-            if (contentDiv) {
-                contentDiv.innerHTML = section.content || '';
-            }
-        }
-
+        // Toggle section expansion
         function toggleSection(sectionId) {
-            expandedSections[sectionId] = !expandedSections[sectionId];
-            populateSections();
-        }
-
-        function toggleIconPicker(sectionId) {
-            // Close any open icon picker
-            if (currentIconPicker && currentIconPicker !== sectionId) {
-                closeIconPicker();
-            }
+            const content = document.getElementById(`section-${sectionId}`);
+            const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+            const indicator = section.querySelector('.expand-indicator');
             
-            const picker = document.getElementById(`iconPicker-${sectionId}`);
-            if (picker.classList.contains('active')) {
-                closeIconPicker();
+            content.classList.toggle('expanded');
+            
+            // Update indicator rotation
+            if (content.classList.contains('expanded')) {
+                indicator.style.transform = 'rotate(180deg)';
             } else {
-                picker.classList.add('active');
-                currentIconPicker = sectionId;
+                indicator.style.transform = 'rotate(0deg)';
             }
         }
 
-        function closeIconPicker() {
-            if (currentIconPicker) {
-                const picker = document.getElementById(`iconPicker-${currentIconPicker}`);
-                if (picker) {
-                    picker.classList.remove('active');
-                }
-                currentIconPicker = null;
-            }
-        }
-
-        function selectIcon(sectionId, icon) {
-            const section = extractedData.sections.find(s => s.id === sectionId);
-            if (section) {
-                section.icon = icon;
-                populateSections();
-                updatePreview();
-            }
-            closeIconPicker();
-        }
-
-        function moveSection(currentIndex, direction) {
-            const newIndex = currentIndex + direction;
-            
-            if (newIndex >= 0 && newIndex < extractedData.sections.length) {
-                // Swap sections
-                const temp = extractedData.sections[currentIndex];
-                extractedData.sections[currentIndex] = extractedData.sections[newIndex];
-                extractedData.sections[newIndex] = temp;
-                
-                populateSections();
-                updatePreview();
-            }
-        }
-
+        // Add new section
         function addSection() {
             const newSection = {
-                id: Date.now(),
-                title: 'New Section',
-                content: '',
-                icon: '📄',
-                image: null,
-                isHeader: false
+                id: `section-${Date.now()}`,
+                icon: '📝',
+                name: 'New Section',
+                content: [{ type: 'text', value: '', allowHtml: false }]
             };
-            extractedData.sections.push(newSection);
-            expandedSections[newSection.id] = true;
-            populateSections();
-            updatePreview();
-        }
-
-        function removeSection(id) {
-            extractedData.sections = extractedData.sections.filter(s => s.id !== id);
-            delete expandedSections[id];
-            populateSections();
-            updatePreview();
-        }
-
-        function updateSection(id, field, value) {
-            const section = extractedData.sections.find(s => s.id === id);
-            if (section) {
-                section[field] = value;
-                if (field === 'title') {
-                    populateSections();
+            currentProject.sections.push(newSection);
+            
+            // Mark the new section to be expanded
+            renderSections();
+            
+            // Auto-expand the new section
+            const newSectionContent = document.getElementById(`section-${newSection.id}`);
+            if (newSectionContent) {
+                newSectionContent.classList.add('expanded');
+                // Update indicator rotation
+                const section = document.querySelector(`.section-editor[data-id="${newSection.id}"]`);
+                const indicator = section.querySelector('.expand-indicator');
+                if (indicator) {
+                    indicator.style.transform = 'rotate(180deg)';
                 }
+                // Scroll to the new section
+                newSectionContent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            updatePreview();
+            showToast('Section added', 'success');
+        }
+
+        // Delete section
+        function deleteSection(index) {
+            if (confirm('Are you sure you want to delete this section?')) {
+                // Store all expanded states except for the deleted section
+                const expandedStates = {};
+                currentProject.sections.forEach((section, i) => {
+                    if (i !== index) {
+                        const sectionContent = document.getElementById(`section-${section.id}`);
+                        if (sectionContent) {
+                            expandedStates[section.id] = sectionContent.classList.contains('expanded');
+                        }
+                    }
+                });
+                
+                currentProject.sections.splice(index, 1);
+                renderSections();
+                
+                // Restore expanded states
+                Object.keys(expandedStates).forEach(sectionId => {
+                    if (expandedStates[sectionId]) {
+                        const sectionContent = document.getElementById(`section-${sectionId}`);
+                        if (sectionContent) {
+                            sectionContent.classList.add('expanded');
+                            const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+                            const indicator = section.querySelector('.expand-indicator');
+                            if (indicator) {
+                                indicator.style.transform = 'rotate(180deg)';
+                            }
+                        }
+                    }
+                });
+                
+                updatePreview();
+                showToast('Section deleted', 'success');
+            }
+        }
+
+        // Move section
+        function moveSection(index, direction) {
+            // Store all expanded states before moving
+            const expandedStates = {};
+            currentProject.sections.forEach(section => {
+                const sectionContent = document.getElementById(`section-${section.id}`);
+                if (sectionContent) {
+                    expandedStates[section.id] = sectionContent.classList.contains('expanded');
+                }
+            });
+            
+            const sections = currentProject.sections;
+            if (direction === 'up' && index > 0) {
+                [sections[index], sections[index - 1]] = [sections[index - 1], sections[index]];
+            } else if (direction === 'down' && index < sections.length - 1) {
+                [sections[index], sections[index + 1]] = [sections[index + 1], sections[index]];
+            }
+            
+            renderSections();
+            
+            // Restore all expanded states
+            Object.keys(expandedStates).forEach(sectionId => {
+                if (expandedStates[sectionId]) {
+                    const sectionContent = document.getElementById(`section-${sectionId}`);
+                    if (sectionContent) {
+                        sectionContent.classList.add('expanded');
+                        const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+                        const indicator = section.querySelector('.expand-indicator');
+                        if (indicator) {
+                            indicator.style.transform = 'rotate(180deg)';
+                        }
+                    }
+                }
+            });
+            
+            updatePreview();
+        }
+
+        // Update section name
+        function updateSectionName(index, value) {
+            currentProject.sections[index].name = value;
+            const sectionHeader = document.querySelector(`.section-editor[data-id="${currentProject.sections[index].id}"] .section-name`);
+            if (sectionHeader) {
+                sectionHeader.textContent = value;
+            }
+            updatePreview();
+        }
+
+        // Add text to section
+        function addTextToSection(sectionIndex) {
+            currentProject.sections[sectionIndex].content.push({
+                type: 'text',
+                value: 'New text content...',
+                allowHtml: false
+            });
+            
+            // Store expanded state of this section
+            const sectionId = currentProject.sections[sectionIndex].id;
+            const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
+            
+            renderSections();
+            
+            // Keep section expanded
+            if (wasExpanded || true) { // Always keep expanded when adding content
+                document.getElementById(`section-${sectionId}`).classList.add('expanded');
+                const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+                const indicator = section.querySelector('.expand-indicator');
+                if (indicator) {
+                    indicator.style.transform = 'rotate(180deg)';
+                }
+            }
+            
+            updatePreview();
+        }
+
+        // Add image to section
+        function addImageToSection(sectionIndex) {
+            currentProject.sections[sectionIndex].content.push({
+                type: 'image',
+                url: null,
+                caption: 'Image caption...'
+            });
+            
+            // Store expanded state of this section
+            const sectionId = currentProject.sections[sectionIndex].id;
+            const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
+            
+            renderSections();
+            
+            // Keep section expanded
+            if (wasExpanded || true) { // Always keep expanded when adding content
+                document.getElementById(`section-${sectionId}`).classList.add('expanded');
+                const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+                const indicator = section.querySelector('.expand-indicator');
+                if (indicator) {
+                    indicator.style.transform = 'rotate(180deg)';
+                }
+            }
+            
+            updatePreview();
+        }
+
+        // Delete content
+        function deleteContent(sectionIndex, contentIndex) {
+            if (currentProject.sections[sectionIndex].content.length > 1) {
+                const sectionId = currentProject.sections[sectionIndex].id;
+                const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
+                
+                currentProject.sections[sectionIndex].content.splice(contentIndex, 1);
+                renderSections();
+                
+                // Restore expanded state
+                if (wasExpanded) {
+                    document.getElementById(`section-${sectionId}`).classList.add('expanded');
+                    const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+                    const indicator = section.querySelector('.expand-indicator');
+                    if (indicator) {
+                        indicator.style.transform = 'rotate(180deg)';
+                    }
+                }
+                
+                updatePreview();
+            } else {
+                showToast('Cannot delete the last content block', 'error');
+            }
+        }
+
+        // Move content
+        function moveContent(sectionIndex, contentIndex, direction) {
+            const sectionId = currentProject.sections[sectionIndex].id;
+            const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
+            
+            const content = currentProject.sections[sectionIndex].content;
+            if (direction === 'up' && contentIndex > 0) {
+                [content[contentIndex], content[contentIndex - 1]] = [content[contentIndex - 1], content[contentIndex]];
+            } else if (direction === 'down' && contentIndex < content.length - 1) {
+                [content[contentIndex], content[contentIndex + 1]] = [content[contentIndex + 1], content[contentIndex]];
+            }
+            
+            renderSections();
+            
+            // Restore expanded state
+            if (wasExpanded) {
+                document.getElementById(`section-${sectionId}`).classList.add('expanded');
+                const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+                const indicator = section.querySelector('.expand-indicator');
+                if (indicator) {
+                    indicator.style.transform = 'rotate(180deg)';
+                }
+            }
+            
+            updatePreview();
+        }
+
+        // Update content value
+        function updateContentValue(sectionIndex, contentIndex, value) {
+            currentProject.sections[sectionIndex].content[contentIndex].value = value;
+            // Just update preview without re-rendering sections
+            updatePreview();
+        }
+
+        // Toggle HTML
+        function toggleHtml(sectionIndex, contentIndex, enabled) {
+            currentProject.sections[sectionIndex].content[contentIndex].allowHtml = enabled;
+            if (enabled) {
+                showToast('⚠️ HTML enabled - Be careful with external content', 'error');
+            }
+            // Just update preview without re-rendering sections
+            updatePreview();
+        }
+
+        // Format text
+        function formatText(command, sectionIndex, contentIndex, value = null) {
+            const editor = document.getElementById(`editor-${sectionIndex}-${contentIndex}`);
+            editor.focus();
+            document.execCommand(command, false, value);
+            // Update the stored value without re-rendering
+            currentProject.sections[sectionIndex].content[contentIndex].value = editor.innerHTML;
+            updatePreview();
+        }
+
+        // Insert link
+        function insertLink(sectionIndex, contentIndex) {
+            const editor = document.getElementById(`editor-${sectionIndex}-${contentIndex}`);
+            const selection = window.getSelection();
+            const selectedText = selection.toString();
+            
+            const url = prompt('Enter URL:', 'https://');
+            if (url && url !== 'https://') {
+                editor.focus();
+                if (selectedText) {
+                    document.execCommand('createLink', false, url);
+                } else {
+                    const linkText = prompt('Enter link text:', 'Link');
+                    if (linkText) {
+                        document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${linkText}</a>`);
+                    }
+                }
+                currentProject.sections[sectionIndex].content[contentIndex].value = editor.innerHTML;
                 updatePreview();
             }
         }
 
-        function formatText(sectionId, format) {
-            const editor = document.getElementById(`sectionContent-${sectionId}`);
-            editor.focus();
-            
-            // Check if we have selected text
+        // Format caption
+        function formatCaption(command, sectionIndex, contentIndex) {
+            const caption = document.getElementById(`caption-${sectionIndex}-${contentIndex}`);
+            caption.focus();
+            document.execCommand(command, false, null);
+            // Update the stored value without re-rendering
+            currentProject.sections[sectionIndex].content[contentIndex].caption = caption.innerHTML;
+            updatePreview();
+        }
+
+        // Insert link in caption
+        function insertCaptionLink(sectionIndex, contentIndex) {
+            const caption = document.getElementById(`caption-${sectionIndex}-${contentIndex}`);
             const selection = window.getSelection();
-            if (selection.rangeCount === 0 || selection.isCollapsed) {
-                return;
-            }
+            const selectedText = selection.toString();
             
-            const range = selection.getRangeAt(0);
-            const selectedText = range.toString();
-            
-            if (selectedText) {
-                let element;
-                switch(format) {
-                    case 'bold':
-                        element = document.createElement('b');
-                        break;
-                    case 'italic':
-                        element = document.createElement('i');
-                        break;
-                    case 'underline':
-                        element = document.createElement('u');
-                        break;
-                    case 'superscript':
-                        element = document.createElement('sup');
-                        break;
-                }
-                
-                if (element) {
-                    try {
-                        range.deleteContents();
-                        element.textContent = selectedText;
-                        range.insertNode(element);
-                        
-                        // Clear selection
-                        selection.removeAllRanges();
-                        
-                        updateSectionFromDiv(sectionId);
-                    } catch (e) {
-                        console.error('Error formatting text:', e);
+            const url = prompt('Enter URL:', 'https://');
+            if (url && url !== 'https://') {
+                caption.focus();
+                if (selectedText) {
+                    document.execCommand('createLink', false, url);
+                } else {
+                    const linkText = prompt('Enter link text:', 'Link');
+                    if (linkText) {
+                        document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${linkText}</a>`);
                     }
                 }
+                currentProject.sections[sectionIndex].content[contentIndex].caption = caption.innerHTML;
+                updatePreview();
             }
         }
 
-        function updateSectionFromDiv(sectionId) {
-            const editor = document.getElementById(`sectionContent-${sectionId}`);
-            let htmlContent = editor.innerHTML;
-            
-            // Clean up empty paragraphs and divs that browsers sometimes add
-            htmlContent = htmlContent
-                .replace(/<div><br><\/div>/g, '<br>')
-                .replace(/<div>/g, '<br>')
-                .replace(/<\/div>/g, '')
-                .replace(/^<br>/, '') // Remove leading br
-                .replace(/<p><\/p>/g, '')
-                .replace(/<p><br><\/p>/g, '<br>');
-            
-            updateSection(sectionId, 'content', htmlContent);
-        }
-
-        function handlePaste(event, sectionId) {
-            event.preventDefault();
-            const paste = (event.clipboardData || window.clipboardData).getData('text');
-            const selection = window.getSelection();
-            if (!selection.rangeCount) return;
-            
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(document.createTextNode(paste));
-            selection.removeAllRanges();
-            
-            updateSectionFromDiv(sectionId);
-        }
-
-        function insertList(sectionId, type) {
-            const editor = document.getElementById(`sectionContent-${sectionId}`);
-            editor.focus();
-            
-            const selection = window.getSelection();
-            let range;
-            
-            if (selection.rangeCount === 0) {
-                // If no selection, create a range at the end
-                range = document.createRange();
-                range.selectNodeContents(editor);
-                range.collapse(false);
-            } else {
-                range = selection.getRangeAt(0);
-            }
-            
-            // Create a new line and list item
-            const br = document.createElement('br');
-            const listItem = type === 'bullet' ? '• ' : '1. ';
-            const textNode = document.createTextNode(listItem);
-            
-            range.deleteContents();
-            range.insertNode(br);
-            range.setStartAfter(br);
-            range.insertNode(textNode);
-            range.setStartAfter(textNode);
-            range.collapse(true);
-            
-            selection.removeAllRanges();
-            selection.addRange(range);
-            
-            updateSectionFromDiv(sectionId);
-        }
-
-        function handleSectionImage(sectionId, event) {
+        // Handle image upload
+        function handleImageUpload(sectionIndex, contentIndex, event) {
             const file = event.target.files[0];
-            if (file && file.type.startsWith('image/')) {
+            if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    const section = extractedData.sections.find(s => s.id === sectionId);
-                    if (section) {
-                        section.image = e.target.result;
-                        populateSections();
-                        updatePreview();
+                    const sectionId = currentProject.sections[sectionIndex].id;
+                    const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
+                    
+                    currentProject.sections[sectionIndex].content[contentIndex].url = e.target.result;
+                    renderSections();
+                    
+                    // Restore expanded state
+                    if (wasExpanded) {
+                        document.getElementById(`section-${sectionId}`).classList.add('expanded');
+                        const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
+                        const indicator = section.querySelector('.expand-indicator');
+                        if (indicator) {
+                            indicator.style.transform = 'rotate(180deg)';
+                        }
                     }
+                    
+                    updatePreview();
                 };
                 reader.readAsDataURL(file);
             }
         }
 
-        function removeSectionImage(sectionId) {
-            const section = extractedData.sections.find(s => s.id === sectionId);
-            if (section) {
-                section.image = null;
-                populateSections();
-                updatePreview();
-            }
+        // Update image caption
+        function updateImageCaption(sectionIndex, contentIndex, caption) {
+            currentProject.sections[sectionIndex].content[contentIndex].caption = caption;
+            // Just update preview without re-rendering sections
+            updatePreview();
         }
 
+        // Handle logo upload
         function handleLogoUpload(event) {
             const file = event.target.files[0];
-            if (file && file.type.startsWith('image/')) {
+            if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    extractedData.logo = e.target.result;
+                    currentProject.logoUrl = e.target.result;
                     document.getElementById('logoPreview').innerHTML = `
-                        <div style="margin-top: 16px;">
-                            <img src="${e.target.result}" alt="Logo" style="max-width: 150px; height: auto; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        </div>
+                        <img src="${e.target.result}" style="max-width: 200px; margin-top: 10px; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px; background: white;">
+                        <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">Logo uploaded successfully! Use the size slider above to adjust.</p>
                     `;
                     updatePreview();
                 };
@@ -2238,253 +2407,349 @@
             }
         }
 
-        function updateColorScheme() {
-            const scheme = document.getElementById('colorScheme').value;
-            const colors = colorSchemes[scheme];
+        // Switch tabs
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                if (tab.dataset.tab === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
             
-            document.getElementById('primaryColor').value = colors.primary;
-            document.getElementById('primaryColorHex').value = colors.primary;
-            document.getElementById('secondaryColor').value = colors.secondary;
-            document.getElementById('secondaryColorHex').value = colors.secondary;
-            
-            extractedData.primaryColor = colors.primary;
-            extractedData.secondaryColor = colors.secondary;
-            
-            updatePreview();
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}Tab`).classList.add('active');
         }
 
-        function updateTitleSize() {
-            const value = document.getElementById('titleSize').value;
-            document.getElementById('titleSizeValue').textContent = value + 'px';
-            extractedData.titleSize = parseInt(value);
-            updatePreview();
-        }
-
-        function updateContentSize() {
-            const value = document.getElementById('contentSize').value;
-            document.getElementById('contentSizeValue').textContent = value + 'px';
-            extractedData.contentSize = parseInt(value);
-            updatePreview();
-        }
-
+        // Update preview
         function updatePreview() {
-            const iframe = document.getElementById('websitePreview');
-            const fullPreview = document.getElementById('fullPreview');
+            const preview = document.getElementById('websitePreview');
             
-            // Get current values
-            extractedData.primaryColor = document.getElementById('primaryColor').value;
-            extractedData.secondaryColor = document.getElementById('secondaryColor').value;
-            extractedData.fontStyle = document.getElementById('fontStyle').value;
-            extractedData.layoutStyle = document.getElementById('layoutStyle').value;
-            
-            const html = generatePreviewHTML();
-            iframe.srcdoc = html;
-            if (fullPreview) {
-                fullPreview.srcdoc = html;
+            // Save scroll position
+            let scrollPos = 0;
+            try {
+                if (preview.contentWindow && preview.contentWindow.document) {
+                    scrollPos = preview.contentWindow.pageYOffset || preview.contentWindow.document.documentElement.scrollTop || 0;
+                }
+            } catch (e) {
+                // Handle cross-origin issues
             }
-        }
-
-        function generatePreviewHTML() {
-            const fontMap = {
-                system: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-                serif: 'Georgia, "Times New Roman", serif',
-                mono: '"SF Mono", Monaco, "Cascadia Code", monospace'
-            };
-
-            const processContent = (content) => {
-                // Content is already HTML from contentEditable, just clean it up
-                return content
-                    .replace(/<div>/g, '<br>')
-                    .replace(/<\/div>/g, '')
-                    .replace(/^<br>/, '') // Remove leading br
-                    .replace(/<br>\s*<br>/g, '<br>'); // Replace double breaks
-            };
-
-            // Get header sections
-            const titleSection = extractedData.sections.find(s => s.type === 'title');
-            const authorsSection = extractedData.sections.find(s => s.type === 'authors');
-            const affiliationsSection = extractedData.sections.find(s => s.type === 'affiliations');
-            const conferenceSection = extractedData.sections.find(s => s.type === 'conference');
-
-            // Get content sections (non-header)
-            const contentSections = extractedData.sections.filter(s => !s.isHeader);
-
-            const isNavLayout = extractedData.layoutStyle === 'sections';
-
-            // Navigation for sections layout
-            const navHTML = isNavLayout && contentSections.length > 0 ? `
-                <nav style="position: fixed; top: 0; left: 0; right: 0; background: ${extractedData.secondaryColor}; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                    <div style="max-width: 1200px; margin: 0 auto; padding: 15px 40px; display: flex; justify-content: center; align-items: center;">
-                        <div style="display: flex; gap: 30px; flex-wrap: wrap; justify-content: center;">
-                            ${contentSections.map((section, idx) => `
-                                <a href="#section-${idx}" style="color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'">
-                                    ${section.icon} ${section.title}
-                                </a>
-                            `).join('')}
-                        </div>
+            
+            const primaryColor = document.getElementById('primaryColor').value;
+            const secondaryColor = document.getElementById('secondaryColor').value;
+            const layoutStyle = document.getElementById('layoutStyle').value;
+            const titleSize = document.getElementById('titleSize').value;
+            const contentSize = document.getElementById('contentSize').value;
+            const fontStyle = document.getElementById('fontStyle').value;
+            const headerAlignment = document.getElementById('headerAlignment')?.value || 'center';
+            const logoSize = document.getElementById('logoSize')?.value || '120';
+            
+            const fontFamily = fontStyle === 'serif' ? 'Georgia, serif' : 
+                             fontStyle === 'mono' ? 'monospace' : 
+                             '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+            
+            const navHtml = layoutStyle === 'sections' ? `
+                <nav style="position: sticky; top: 0; background: white; border-bottom: 1px solid #e5e7eb; padding: 16px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="max-width: 1200px; margin: 0 auto; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                        ${currentProject.sections.map(section => 
+                            `<a href="#${section.id}" style="color: ${primaryColor}; text-decoration: none; font-weight: 500;">${section.icon} ${section.name}</a>`
+                        ).join('')}
+                        <button onclick="alert('PDF download would be triggered here')" style="margin-left: auto; background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); color: white; padding: 8px 16px; border-radius: 25px; border: none; cursor: pointer; font-weight: 600;">📄 Download PDF</button>
                     </div>
                 </nav>
-            ` : '';
-
-            // Regular sections layout
-            const sectionsHTML = contentSections.map((section, idx) => `
-                <div class="section" id="section-${idx}" style="scroll-margin-top: ${isNavLayout ? '80px' : '0'};">
-                    <h2>${section.icon} ${section.title}</h2>
-                    <div class="section-content">${processContent(section.content)}</div>
-                    ${section.image ? `
-                        <div style="text-align: center; margin-top: 24px;">
-                            <img src="${section.image}" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                        </div>
-                    ` : ''}
+            ` : layoutStyle === 'menu' ? `
+                <div id="hamburgerMenu" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+                    <button onclick="toggleMenu()" style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="width: 24px; height: 2px; background: ${primaryColor}; margin: 4px 0;"></div>
+                        <div style="width: 24px; height: 2px; background: ${primaryColor}; margin: 4px 0;"></div>
+                        <div style="width: 24px; height: 2px; background: ${primaryColor}; margin: 4px 0;"></div>
+                    </button>
+                    <div id="menuDropdown" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-top: 8px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); min-width: 200px;">
+                        ${currentProject.sections.map(section => 
+                            `<a href="#${section.id}" onclick="toggleMenu()" style="display: block; padding: 8px 12px; color: ${primaryColor}; text-decoration: none; font-weight: 500; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='transparent'">${section.icon} ${section.name}</a>`
+                        ).join('')}
+                        <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <button onclick="alert('PDF download would be triggered here')" style="width: 100%; background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); color: white; padding: 8px 16px; border-radius: 25px; border: none; cursor: pointer; font-weight: 600;">📄 Download PDF</button>
+                    </div>
                 </div>
-            `).join('');
-
-            return `
+                <script>
+                    function toggleMenu() {
+                        const dropdown = document.getElementById('menuDropdown');
+                        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+                    }
+                    // Close menu when clicking outside
+                    document.addEventListener('click', function(event) {
+                        const menu = document.getElementById('hamburgerMenu');
+                        if (!menu.contains(event.target)) {
+                            document.getElementById('menuDropdown').style.display = 'none';
+                        }
+                    });
+                </scr"+"ipt>
+            ` : '';
+            
+            const previewHtml = `
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        html { scroll-behavior: smooth; }
                         body {
-                            font-family: ${fontMap[extractedData.fontStyle]};
-                            line-height: 1.6;
-                            color: #1a1a1a;
+                            font-family: ${fontFamily};
+                            margin: 0;
+                            padding: 0;
                             background: #f8fafc;
-                            ${isNavLayout ? 'padding-top: 60px;' : ''}
-                        }
-                        .header {
-                            background: linear-gradient(135deg, ${extractedData.primaryColor} 0%, ${extractedData.secondaryColor} 100%);
-                            color: white;
-                            padding: 80px 40px;
-                            text-align: center;
+                            font-size: ${contentSize}px;
                         }
                         .container {
-                            max-width: 1000px;
+                            max-width: 1200px;
                             margin: 0 auto;
-                            padding: 40px 20px;
+                            padding: 20px;
                         }
-                        .content {
-                            background: white;
-                            padding: 60px;
-                            border-radius: 20px;
-                            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-                            margin-top: -40px;
+                        .header {
+                            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+                            color: white;
+                            padding: 60px 40px;
+                            border-radius: 16px;
+                            margin-bottom: 30px;
+                            text-align: ${headerAlignment};
                             position: relative;
                         }
-                        h1 {
-                            font-size: ${extractedData.titleSize}px;
+                        .logo {
+                            max-width: ${logoSize}px;
+                            max-height: ${logoSize}px;
                             margin-bottom: 20px;
-                            line-height: 1.2;
-                            font-weight: 600;
+                            background: white;
+                            padding: 12px;
+                            border-radius: 12px;
+                            display: inline-block;
                         }
-                        .authors {
-                            font-size: 20px;
-                            opacity: 0.9;
-                            margin-bottom: 16px;
-                        }
-                        .affiliations {
-                            font-size: 16px;
-                            opacity: 0.8;
-                            margin-bottom: 12px;
-                        }
-                        .conference {
-                            font-size: 14px;
-                            opacity: 0.7;
+                        h1 { 
+                            margin: 0 0 10px 0; 
+                            font-size: ${titleSize}px;
                         }
                         .section {
-                            margin-bottom: 40px;
-                            padding: 32px;
-                            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-                            border-radius: 16px;
-                            border: 1px solid #e2e8f0;
-                            transition: all 0.3s ease;
-                        }
-                        .section:hover {
-                            transform: translateY(-2px);
-                            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+                            background: white;
+                            padding: 30px;
+                            margin-bottom: 20px;
+                            border-radius: 12px;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            scroll-margin-top: ${layoutStyle === 'sections' ? '80px' : '20px'};
                         }
                         .section h2 {
-                            color: ${extractedData.primaryColor};
+                            color: ${primaryColor};
+                            margin-top: 0;
+                            font-size: ${Math.round(titleSize * 0.75)}px;
+                        }
+                        .content-block {
                             margin-bottom: 20px;
-                            font-size: 24px;
+                        }
+                        .content-block a {
+                            color: ${primaryColor};
+                            text-decoration: underline;
+                        }
+                        .content-block a:hover {
+                            color: ${secondaryColor};
+                        }
+                        .image-block {
+                            text-align: center;
+                            margin: 20px 0;
+                        }
+                        .image-block img {
+                            max-width: 100%;
+                            height: auto;
+                            border-radius: 8px;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                        }
+                        .image-caption {
+                            margin-top: 12px;
+                            font-style: italic;
+                            color: #666;
+                            font-size: ${Math.round(contentSize * 0.9)}px;
+                        }
+                        .image-caption a {
+                            color: ${primaryColor};
+                            text-decoration: underline;
+                        }
+                        .image-caption a:hover {
+                            color: ${secondaryColor};
+                        }
+                        .pdf-download {
+                            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+                            color: white;
+                            padding: 16px 32px;
+                            border-radius: 50px;
                             font-weight: 600;
+                            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+                            border: none;
+                            cursor: pointer;
+                            font-size: 16px;
+                            display: inline-block;
+                            margin: 40px auto 20px;
                         }
-                        .section-content {
-                            font-size: ${extractedData.contentSize}px;
-                            line-height: 1.7;
-                            color: #374151;
+                        .pdf-download:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
                         }
-                        
-                        @media (max-width: 768px) {
-                            .header { padding: 60px 20px; }
-                            h1 { font-size: ${extractedData.titleSize * 0.8}px; }
-                            .content { padding: 40px 20px; }
-                            .section { padding: 24px; }
-                            nav > div { padding: 10px 20px; }
-                            nav > div > div { gap: 10px !important; }
-                            nav a { font-size: 14px; padding: 8px 12px; }
+                        .pdf-download-container {
+                            text-align: center;
+                            padding: 20px;
+                            background: white;
+                            margin-top: 40px;
+                            border-radius: 12px;
                         }
                     </style>
                 </head>
                 <body>
-                    ${navHTML}
-                    <div class="header">
-                        <div class="container">
-                            ${extractedData.logo ? `<img src="${extractedData.logo}" style="max-height: 80px; margin-bottom: 20px; border-radius: 8px;">` : ''}
-                            <h1>${titleSection?.content ? processContent(titleSection.content) : 'Your Poster Title'}</h1>
-                            <div class="authors">${authorsSection?.content ? processContent(authorsSection.content) : ''}</div>
-                            <div class="affiliations">${affiliationsSection?.content ? processContent(affiliationsSection.content) : ''}</div>
-                            <div class="conference">${conferenceSection?.content ? processContent(conferenceSection.content) : ''}</div>
-                        </div>
-                    </div>
+                    ${navHtml}
                     <div class="container">
-                        <div class="content">
-                            ${sectionsHTML}
-                        </div>
+                        ${currentProject.sections.map(section => {
+                            if (section.isHeader) {
+                                return `
+                                    <div class="header" id="${section.id}">
+                                        ${currentProject.logoUrl ? `<div><img src="${currentProject.logoUrl}" class="logo" alt="Logo"></div>` : ''}
+                                        ${section.content.map(content => {
+                                            if (content.type === 'text') {
+                                                return content.allowHtml ? content.value : `<div>${content.value}</div>`;
+                                            }
+                                            return '';
+                                        }).join('')}
+                                    </div>
+                                `;
+                            } else {
+                                return `
+                                    <div class="section" id="${section.id}">
+                                        <h2>${section.icon} ${section.name}</h2>
+                                        ${section.content.map(content => {
+                                            if (content.type === 'text') {
+                                                return `<div class="content-block">${content.allowHtml ? content.value : content.value}</div>`;
+                                            } else if (content.type === 'image' && content.url) {
+                                                return `
+                                                    <div class="image-block">
+                                                        <img src="${content.url}" alt="${section.name} image">
+                                                        ${content.caption ? `<div class="image-caption">${content.caption}</div>` : ''}
+                                                    </div>
+                                                `;
+                                            }
+                                            return '';
+                                        }).join('')}
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
                     </div>
+                    ${layoutStyle === 'single' ? `
+                        <div class="pdf-download-container">
+                            <button class="pdf-download" onclick="alert('PDF download would be triggered here')">
+                                📄 Download PDF
+                            </button>
+                        </div>
+                    ` : ''}
                 </body>
                 </html>
             `;
+            
+            preview.srcdoc = previewHtml;
+            
+            // Restore scroll position after content loads
+            preview.onload = function() {
+                if (scrollPos > 0) {
+                    setTimeout(() => {
+                        try {
+                            preview.contentWindow.scrollTo(0, scrollPos);
+                        } catch (e) {
+                            // Handle cross-origin issues
+                        }
+                    }, 100);
+                }
+            };
         }
 
-        function setPreviewDevice(device) {
-            // Update button states
-            document.querySelectorAll('.modal-header .btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            const buttonMap = {
-                'desktop': 'desktopBtn',
-                'tablet-h': 'tabletHBtn', 
-                'tablet-v': 'tabletVBtn',
-                'mobile': 'mobileBtn'
+        // Update color scheme
+        function updateColorScheme() {
+            const scheme = document.getElementById('colorScheme').value;
+            const schemes = {
+                clinical: { primary: '#0ea5e9', secondary: '#0284c7' },
+                research: { primary: '#16a34a', secondary: '#15803d' },
+                pharma: { primary: '#9333ea', secondary: '#7c3aed' },
+                modern: { primary: '#14b8a6', secondary: '#0d9488' },
+                academic: { primary: '#dc2626', secondary: '#b91c1c' }
             };
             
-            document.getElementById(buttonMap[device]).classList.add('active');
-            
-            // Update preview frame
-            const frame = document.getElementById('previewFrame');
-            frame.className = `preview-frame ${device}`;
+            if (schemes[scheme]) {
+                document.getElementById('primaryColor').value = schemes[scheme].primary;
+                document.getElementById('primaryColorHex').value = schemes[scheme].primary;
+                document.getElementById('secondaryColor').value = schemes[scheme].secondary;
+                document.getElementById('secondaryColorHex').value = schemes[scheme].secondary;
+                updatePreview();
+            }
         }
 
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type} show`;
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        function showPreviewModal() {
+        // Update title size
+        function updateTitleSize() {
+            const size = document.getElementById('titleSize').value;
+            document.getElementById('titleSizeValue').textContent = `${size}px`;
             updatePreview();
+        }
+
+        // Update content size
+        function updateContentSize() {
+            const size = document.getElementById('contentSize').value;
+            document.getElementById('contentSizeValue').textContent = `${size}px`;
+            updatePreview();
+        }
+
+        // Update logo size
+        function updateLogoSize() {
+            const size = document.getElementById('logoSize').value;
+            document.getElementById('logoSizeValue').textContent = `${size}px`;
+            updatePreview();
+        }
+
+        // Show preview modal and preserve scroll position
+        function showPreviewModal() {
+            const preview = document.getElementById('websitePreview');
+            const fullPreview = document.getElementById('fullPreview');
+            
+            // Copy the current preview HTML
+            fullPreview.srcdoc = preview.srcdoc;
+            
+            // Show modal
             document.getElementById('previewModal').classList.add('active');
+            
+            // Preserve scroll position when modal preview loads
+            fullPreview.onload = function() {
+                try {
+                    const scrollPos = preview.contentWindow.pageYOffset || preview.contentWindow.document.documentElement.scrollTop || 0;
+                    if (scrollPos > 0) {
+                        setTimeout(() => {
+                            fullPreview.contentWindow.scrollTo(0, scrollPos);
+                        }, 100);
+                    }
+                } catch (e) {
+                    // Handle cross-origin issues
+                }
+            };
         }
 
         function closePreviewModal() {
+            const fullPreview = document.getElementById('fullPreview');
+            const preview = document.getElementById('websitePreview');
+            
+            // Try to sync scroll positions back
+            try {
+                const modalScrollPos = fullPreview.contentWindow.pageYOffset || fullPreview.contentWindow.document.documentElement.scrollTop || 0;
+                if (modalScrollPos > 0) {
+                    setTimeout(() => {
+                        preview.contentWindow.scrollTo(0, modalScrollPos);
+                    }, 100);
+                }
+            } catch (e) {
+                // Handle cross-origin issues
+            }
+            
             document.getElementById('previewModal').classList.remove('active');
         }
 
@@ -2496,376 +2761,676 @@
             document.getElementById('exportModal').classList.remove('active');
         }
 
+        function setPreviewDevice(device) {
+            const frame = document.getElementById('previewFrame');
+            frame.className = `preview-frame ${device}`;
+            
+            // Update button states
+            document.querySelectorAll('.modal-header .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`${device.replace('-h', 'H').replace('-v', 'V')}Btn`).classList.add('active');
+        }
+
         function downloadWebsite() {
             const format = document.querySelector('input[name="exportFormat"]:checked').value;
-            let code = '';
+            showToast(`Generating ${format.toUpperCase()} file`, 'success');
+            
+            let content = '';
             let filename = '';
             
             if (format === 'html') {
-                code = generatePreviewHTML();
+                content = generateHTMLExport();
                 filename = 'poster-website.html';
             } else if (format === 'react') {
-                code = generateReactComponent();
+                content = generateReactExport();
                 filename = 'PosterWebsite.jsx';
             } else if (format === 'nextjs') {
-                code = generateNextJSPage();
-                filename = 'poster-page.js';
+                content = generateNextJSExport();
+                filename = 'poster.js';
             }
             
-            const blob = new Blob([code], { type: 'text/plain' });
+            // Create blob and download
+            const blob = new Blob([content], { type: 'text/plain' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
             
             closeExportModal();
-            showToast('Website code downloaded successfully!', 'success');
+            setTimeout(() => {
+                showToast('Download complete!', 'success');
+            }, 500);
         }
-
-        function generateReactComponent() {
-            const titleSection = extractedData.sections.find(s => s.type === 'title');
-            const authorsSection = extractedData.sections.find(s => s.type === 'authors');
-            const affiliationsSection = extractedData.sections.find(s => s.type === 'affiliations');
-            const conferenceSection = extractedData.sections.find(s => s.type === 'conference');
-            const contentSections = extractedData.sections.filter(s => !s.isHeader);
+        
+        // Generate HTML export
+        function generateHTMLExport() {
+            const primaryColor = document.getElementById('primaryColor').value;
+            const secondaryColor = document.getElementById('secondaryColor').value;
+            const layoutStyle = document.getElementById('layoutStyle').value;
+            const titleSize = document.getElementById('titleSize').value;
+            const contentSize = document.getElementById('contentSize').value;
+            const fontStyle = document.getElementById('fontStyle').value;
+            const headerAlignment = document.getElementById('headerAlignment')?.value || 'center';
+            const logoSize = document.getElementById('logoSize')?.value || '120';
             
-            return `import React from 'react';
+            const fontFamily = fontStyle === 'serif' ? 'Georgia, serif' : 
+                             fontStyle === 'mono' ? 'monospace' : 
+                             '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+            
+            const navHtml = layoutStyle === 'sections' ? `
+    <nav>
+        <div class="nav-container">
+            ${currentProject.sections.map(section => 
+                `<a href="#${section.id}">${section.icon} ${section.name}</a>`
+            ).join('')}
+            <button class="pdf-download" style="margin-left: auto;" onclick="window.print()">📄 Download PDF</button>
+        </div>
+    </nav>` : layoutStyle === 'menu' ? `
+    <div id="hamburgerMenu">
+        <button onclick="toggleMenu()">
+            <div class="menu-line"></div>
+            <div class="menu-line"></div>
+            <div class="menu-line"></div>
+        </button>
+        <div id="menuDropdown">
+            ${currentProject.sections.map(section => 
+                `<a href="#${section.id}" onclick="toggleMenu()">${section.icon} ${section.name}</a>`
+            ).join('')}
+            <hr>
+            <button class="pdf-download" onclick="window.print()">📄 Download PDF</button>
+        </div>
+    </div>
+    <script>
+        function toggleMenu() {
+            const dropdown = document.getElementById('menuDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('hamburgerMenu');
+            if (!menu.contains(event.target)) {
+                document.getElementById('menuDropdown').style.display = 'none';
+            }
+        });
+    <\/script>` : '';
+            
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${currentProject.title}</title>
+    <style>
+        body {
+            font-family: ${fontFamily};
+            margin: 0;
+            padding: 0;
+            background: #f8fafc;
+            font-size: ${contentSize}px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+            color: white;
+            padding: 60px 40px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            text-align: ${headerAlignment};
+            position: relative;
+        }
+        .logo {
+            max-width: ${logoSize}px;
+            max-height: ${logoSize}px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        h1 { 
+            margin: 0 0 10px 0; 
+            font-size: ${titleSize}px;
+        }
+        .section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            scroll-margin-top: ${layoutStyle === 'sections' ? '80px' : '20px'};
+        }
+        .section h2 {
+            color: ${primaryColor};
+            margin-top: 0;
+            font-size: ${Math.round(titleSize * 0.75)}px;
+        }
+        .content-block {
+            margin-bottom: 20px;
+        }
+        .content-block a {
+            color: ${primaryColor};
+            text-decoration: underline;
+        }
+        .content-block a:hover {
+            color: ${secondaryColor};
+        }
+        .image-block {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .image-block img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .image-caption {
+            margin-top: 12px;
+            font-style: italic;
+            color: #666;
+            font-size: ${Math.round(contentSize * 0.9)}px;
+        }
+        .image-caption a {
+            color: ${primaryColor};
+        }
+        nav {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 16px;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        nav .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        nav a {
+            color: ${primaryColor};
+            text-decoration: none;
+            font-weight: 500;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        #hamburgerMenu {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        #hamburgerMenu button {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .menu-line {
+            width: 24px;
+            height: 2px;
+            background: ${primaryColor};
+            margin: 4px 0;
+        }
+        #menuDropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            margin-top: 8px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            min-width: 200px;
+        }
+        #menuDropdown a {
+            display: block;
+            padding: 8px 12px;
+            color: ${primaryColor};
+            text-decoration: none;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        #menuDropdown a:hover {
+            background: #f0fdf4;
+        }
+        #menuDropdown hr {
+            margin: 12px 0;
+            border: none;
+            border-top: 1px solid #e5e7eb;
+        }
+        .pdf-download {
+            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+            color: white;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            display: inline-block;
+            margin: 40px auto 20px;
+        }
+        #menuDropdown .pdf-download {
+            width: 100%;
+            margin: 0;
+            font-size: 14px;
+            padding: 10px 16px;
+        }
+        .pdf-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        .pdf-download-container {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            margin-top: 40px;
+            border-radius: 12px;
+        }
+        @media print {
+            nav, #hamburgerMenu, .pdf-download-container { display: none; }
+        }
+    </style>
+</head>
+<body>
+    ${navHtml}
+    
+    <div class="container">
+        ${currentProject.sections.map(section => {
+            if (section.isHeader) {
+                return `
+        <div class="header" id="${section.id}">
+            ${currentProject.logoUrl ? `<div><img src="${currentProject.logoUrl}" class="logo" alt="Logo"></div>` : ''}
+            ${section.content.map(content => {
+                if (content.type === 'text') {
+                    return content.allowHtml ? content.value : `<div>${content.value}</div>`;
+                }
+                return '';
+            }).join('')}
+        </div>`;
+            } else {
+                return `
+        <div class="section" id="${section.id}">
+            <h2>${section.icon} ${section.name}</h2>
+            ${section.content.map(content => {
+                if (content.type === 'text') {
+                    return `<div class="content-block">${content.value}</div>`;
+                } else if (content.type === 'image' && content.url) {
+                    return `
+            <div class="image-block">
+                <img src="${content.url}" alt="${section.name} image">
+                ${content.caption ? `<div class="image-caption">${content.caption}</div>` : ''}
+            </div>`;
+                }
+                return '';
+            }).join('')}
+        </div>`;
+            }
+        }).join('')}
+    </div>
+    
+    ${layoutStyle === 'single' ? `
+    <div class="pdf-download-container">
+        <button class="pdf-download" onclick="window.print()">📄 Download PDF</button>
+    </div>
+    ` : ''}
+</body>
+</html>`;
+        }
+        
+        // Generate React export
+        function generateReactExport() {
+            const primaryColor = document.getElementById('primaryColor').value;
+            const secondaryColor = document.getElementById('secondaryColor').value;
+            const headerAlignment = document.getElementById('headerAlignment')?.value || 'center';
+            const logoSize = document.getElementById('logoSize')?.value || '120';
+            const layoutStyle = document.getElementById('layoutStyle')?.value || 'single';
+            
+            return `import React, { useState } from 'react';
+import styled from 'styled-components';
+
+const Container = styled.div\`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #f8fafc;
+  min-height: 100vh;
+\`;
+
+const Header = styled.header\`
+  background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+  color: white;
+  padding: 60px 40px;
+  border-radius: 16px;
+  margin-bottom: 30px;
+  text-align: ${headerAlignment};
+  position: relative;
+\`;
+
+const Logo = styled.img\`
+  max-width: ${logoSize}px;
+  max-height: ${logoSize}px;
+  margin-bottom: 20px;
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  display: inline-block;
+\`;
+
+const Section = styled.section\`
+  background: white;
+  padding: 30px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+\`;
+
+const HamburgerMenu = styled.div\`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+\`;
 
 const PosterWebsite = () => {
-    const data = ${JSON.stringify(extractedData, null, 2)};
-    
-    const titleSection = data.sections.find(s => s.type === 'title');
-    const authorsSection = data.sections.find(s => s.type === 'authors');
-    const affiliationsSection = data.sections.find(s => s.type === 'affiliations');
-    const conferenceSection = data.sections.find(s => s.type === 'conference');
-    const contentSections = data.sections.filter(s => !s.isHeader);
-    const isNavLayout = data.layoutStyle === 'sections';
-    
-    return (
-        <div className="poster-website">
-            {isNavLayout && contentSections.length > 0 && (
-                <nav style={{ 
-                    position: 'fixed', 
-                    top: 0, 
-                    left: 0, 
-                    right: 0, 
-                    background: data.secondaryColor, 
-                    zIndex: 1000,
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                }}>
-                    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '15px 40px', display: 'flex', justifyContent: 'center' }}>
-                        <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {contentSections.map((section, idx) => (
-                                <a key={idx} href={"#section-" + idx} style={{ 
-                                    color: 'white', 
-                                    textDecoration: 'none', 
-                                    padding: '10px 20px', 
-                                    borderRadius: '4px',
-                                    transition: 'all 0.3s'
-                                }}>
-                                    {section.icon} {section.title}
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-                </nav>
-            )}
-            <header style={{ 
-                background: "linear-gradient(135deg, " + data.primaryColor + " 0%, " + data.secondaryColor + " 100%)",
-                color: 'white',
-                padding: '80px 40px',
-                textAlign: 'center',
-                paddingTop: isNavLayout ? '140px' : '80px'
-            }}>
-                <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                    {data.logo && <img src={data.logo} alt="Logo" style={{ maxHeight: '80px', marginBottom: '20px', borderRadius: '8px' }} />}
-                    <h1 style={{ fontSize: data.titleSize + 'px', fontWeight: 600, marginBottom: '20px', lineHeight: 1.2 }}>
-                        {titleSection?.content || 'Your Poster Title'}
-                    </h1>
-                    <div className="authors" style={{ fontSize: '20px', opacity: 0.9, marginBottom: '16px' }}>
-                        {authorsSection?.content || ''}
-                    </div>
-                    <div className="affiliations" style={{ fontSize: '16px', opacity: 0.8, marginBottom: '12px' }}>
-                        {affiliationsSection?.content || ''}
-                    </div>
-                    <div className="conference" style={{ fontSize: '14px', opacity: 0.7 }}>
-                        {conferenceSection?.content || ''}
-                    </div>
-                </div>
-            </header>
-            <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '40px 20px' }}>
-                <div style={{ 
-                    background: 'white', 
-                    padding: '60px', 
-                    borderRadius: '20px', 
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                    marginTop: '-40px',
-                    position: 'relative'
-                }}>
-                    {contentSections.map((section, idx) => (
-                        <section key={idx} id={"section-" + idx} style={{
-                            marginBottom: '40px',
-                            padding: '32px',
-                            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                            borderRadius: '16px',
-                            border: '1px solid #e2e8f0',
-                            scrollMarginTop: isNavLayout ? '80px' : '0'
-                        }}>
-                            <h2 style={{ color: data.primaryColor, marginBottom: '20px', fontSize: '24px', fontWeight: 600 }}>
-                                {section.icon} {section.title}
-                            </h2>
-                            <div style={{ fontSize: data.contentSize + 'px', lineHeight: 1.7, color: '#374151' }}
-                                 dangerouslySetInnerHTML={{ __html: section.content }} />
-                            {section.image && (
-                                <div style={{ textAlign: 'center', marginTop: '24px' }}>
-                                    <img src={section.image} alt={section.title} 
-                                         style={{ maxWidth: '100%', height: 'auto', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                </div>
-                            )}
-                        </section>
-                    ))}
-                </div>
-            </main>
-        </div>
-    );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const sections = ${JSON.stringify(currentProject.sections, null, 2)};
+  const logoUrl = ${currentProject.logoUrl ? `"${currentProject.logoUrl}"` : 'null'};
+  
+  return (
+    <Container>
+      ${layoutStyle === 'menu' ? `
+      <HamburgerMenu>
+        <button onClick={() => setMenuOpen(!menuOpen)} style={{
+          background: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '10px',
+          cursor: 'pointer'
+        }}>
+          <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
+          <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
+          <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
+        </button>
+        {menuOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            background: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
+            marginTop: '8px',
+            padding: '16px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+            min-width: '200px'
+          }}>
+            {sections.map((section) => (
+              <a
+                key={section.id}
+                href={\`#\${section.id}\`}
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  display: 'block',
+                  padding: '8px 12px',
+                  color: '${primaryColor}',
+                  textDecoration: 'none',
+                  fontWeight: 500
+                }}
+              >
+                {section.icon} {section.name}
+              </a>
+            ))}
+          </div>
+        )}
+      </HamburgerMenu>
+      ` : ''}
+      {sections.map((section) => {
+        if (section.isHeader) {
+          return (
+            <Header key={section.id} id={section.id}>
+              {logoUrl && <div><Logo src={logoUrl} alt="Logo" /></div>}
+              {section.content.map((content, idx) => (
+                <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />
+              ))}
+            </Header>
+          );
+        }
+        return (
+          <Section key={section.id} id={section.id}>
+            <h2 style={{ color: '${primaryColor}' }}>{section.icon} {section.name}</h2>
+            {section.content.map((content, idx) => {
+              if (content.type === 'text') {
+                return <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />;
+              }
+              if (content.type === 'image' && content.url) {
+                return (
+                  <div key={idx} style={{ textAlign: 'center', margin: '20px 0' }}>
+                    <img src={content.url} alt={section.name} style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                    {content.caption && (
+                      <div style={{ fontStyle: 'italic', marginTop: '12px' }} dangerouslySetInnerHTML={{ __html: content.caption }} />
+                    )}
+                  </div>
+                );
+              }
+              return null;
+            })}
+          </Section>
+        );
+      })}
+    </Container>
+  );
 };
 
 export default PosterWebsite;`;
         }
-
-        function generateNextJSPage() {
-            const titleSection = extractedData.sections.find(s => s.type === 'title');
-            const authorsSection = extractedData.sections.find(s => s.type === 'authors');
-            const affiliationsSection = extractedData.sections.find(s => s.type === 'affiliations');
-            const conferenceSection = extractedData.sections.find(s => s.type === 'conference');
-            const contentSections = extractedData.sections.filter(s => !s.isHeader);
+        
+        // Generate Next.js export - COMPLETE FUNCTION
+        function generateNextJSExport() {
+            const primaryColor = document.getElementById('primaryColor').value;
+            const secondaryColor = document.getElementById('secondaryColor').value;
+            const headerAlignment = document.getElementById('headerAlignment')?.value || 'center';
+            const logoSize = document.getElementById('logoSize')?.value || '120';
+            const layoutStyle = document.getElementById('layoutStyle')?.value || 'single';
             
             return `import Head from 'next/head';
+import { useState } from 'react';
 
 export default function PosterPage() {
-    const data = ${JSON.stringify(extractedData, null, 2)};
-    
-    const titleSection = data.sections.find(s => s.type === 'title');
-    const authorsSection = data.sections.find(s => s.type === 'authors');
-    const affiliationsSection = data.sections.find(s => s.type === 'affiliations');
-    const conferenceSection = data.sections.find(s => s.type === 'conference');
-    const contentSections = data.sections.filter(s => !s.isHeader);
-    const isNavLayout = data.layoutStyle === 'sections';
-    
-    return (
-        <>
-            <Head>
-                <title>{titleSection?.content || 'Medical Poster'}</title>
-                <meta name="description" content={titleSection?.content || 'Medical research poster'} />
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            </Head>
-            <div className="poster-website">
-                {isNavLayout && contentSections.length > 0 && (
-                    <nav style={{ 
-                        position: 'fixed', 
-                        top: 0, 
-                        left: 0, 
-                        right: 0, 
-                        background: data.secondaryColor, 
-                        zIndex: 1000,
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                    }}>
-                        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '15px 40px', display: 'flex', justifyContent: 'center' }}>
-                            <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                {contentSections.map((section, idx) => (
-                                    <a key={idx} href={"#section-" + idx} style={{ 
-                                        color: 'white', 
-                                        textDecoration: 'none', 
-                                        padding: '10px 20px', 
-                                        borderRadius: '4px',
-                                        transition: 'all 0.3s'
-                                    }}>
-                                        {section.icon} {section.title}
-                                    </a>
-                                ))}
-                            </div>
-                        </div>
-                    </nav>
-                )}
-                <header style={{ 
-                    background: "linear-gradient(135deg, " + data.primaryColor + " 0%, " + data.secondaryColor + " 100%)",
-                    color: 'white',
-                    padding: '80px 40px',
-                    textAlign: 'center',
-                    paddingTop: isNavLayout ? '140px' : '80px'
-                }}>
-                    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                        {data.logo && <img src={data.logo} alt="Logo" style={{ maxHeight: '80px', marginBottom: '20px', borderRadius: '8px' }} />}
-                        <h1 style={{ fontSize: data.titleSize + 'px', fontWeight: 600, marginBottom: '20px', lineHeight: 1.2 }}>
-                            {titleSection?.content || 'Your Poster Title'}
-                        </h1>
-                        <div className="authors" style={{ fontSize: '20px', opacity: 0.9, marginBottom: '16px' }}>
-                            {authorsSection?.content || ''}
-                        </div>
-                        <div className="affiliations" style={{ fontSize: '16px', opacity: 0.8, marginBottom: '12px' }}>
-                            {affiliationsSection?.content || ''}
-                        </div>
-                        <div className="conference" style={{ fontSize: '14px', opacity: 0.7 }}>
-                            {conferenceSection?.content || ''}
-                        </div>
-                    </div>
-                </header>
-                <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '40px 20px' }}>
-                    <div style={{ 
-                        background: 'white', 
-                        padding: '60px', 
-                        borderRadius: '20px', 
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                        marginTop: '-40px',
-                        position: 'relative'
-                    }}>
-                        {contentSections.map((section, idx) => (
-                            <section key={idx} id={"section-" + idx} style={{
-                                marginBottom: '40px',
-                                padding: '32px',
-                                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                                borderRadius: '16px',
-                                border: '1px solid #e2e8f0',
-                                scrollMarginTop: isNavLayout ? '80px' : '0'
-                            }}>
-                                <h2 style={{ color: data.primaryColor, marginBottom: '20px', fontSize: '24px', fontWeight: 600 }}>
-                                    {section.icon} {section.title}
-                                </h2>
-                                <div style={{ fontSize: data.contentSize + 'px', lineHeight: 1.7, color: '#374151' }}
-                                     dangerouslySetInnerHTML={{ __html: section.content }} />
-                                {section.image && (
-                                    <div style={{ textAlign: 'center', marginTop: '24px' }}>
-                                        <img src={section.image} alt={section.title} 
-                                             style={{ maxWidth: '100%', height: 'auto', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                    </div>
-                                )}
-                            </section>
-                        ))}
-                    </div>
-                </main>
+  const [menuOpen, setMenuOpen] = useState(false);
+  const sections = ${JSON.stringify(currentProject.sections, null, 2)};
+  const logoUrl = ${currentProject.logoUrl ? `"${currentProject.logoUrl}"` : 'null'};
+  
+  return (
+    <>
+      <Head>
+        <title>${currentProject.title}</title>
+        <meta name="description" content="Research poster website" />
+      </Head>
+      
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', background: '#f8fafc', minHeight: '100vh' }}>
+        ${layoutStyle === 'menu' ? `
+        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              padding: '10px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}
+          >
+            <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
+            <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
+            <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
+          </button>
+          {menuOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              marginTop: '8px',
+              padding: '16px',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+              minWidth: '200px'
+            }}>
+              {sections.map((section) => (
+                <a
+                  key={section.id}
+                  href={\`#\${section.id}\`}
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    display: 'block',
+                    padding: '8px 12px',
+                    color: '${primaryColor}',
+                    textDecoration: 'none',
+                    fontWeight: 500
+                  }}
+                >
+                  {section.icon} {section.name}
+                </a>
+              ))}
+              <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+              <button
+                onClick={() => window.print()}
+                style={{
+                  width: '100%',
+                  background: \`linear-gradient(135deg, ${primaryColor}, ${secondaryColor})\`,
+                  color: 'white',
+                  padding: '10px 16px',
+                  borderRadius: '25px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                📄 Download PDF
+              </button>
             </div>
-        </>
-    );
-}`;
-        }
-
-        // Back button functionality
-        document.getElementById('backButton').addEventListener('click', function() {
-            goHome();
-        });
-
-        // Home and Info button functions
-        function goHome() {
-            document.getElementById('editorScreen').classList.remove('active');
-            document.getElementById('uploadScreen').classList.add('active');
-            
-            // Reset form
-            document.getElementById('fileInput').value = '';
-            document.getElementById('pdfName').textContent = '';
-            extractedData = {
-                sections: [],
-                logo: null,
-                primaryColor: '#16a34a',
-                secondaryColor: '#6b7280',
-                fontStyle: 'system',
-                layoutStyle: 'single',
-                titleSize: 32,
-                contentSize: 16
-            };
-            expandedSections = {};
-            
-            showToast('Ready for new poster upload', 'success');
-        }
-
-        function showInfo() {
-            // Create and show info modal
-            const modal = document.createElement('div');
-            modal.className = 'modal active';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
-                    <h2 class="modal-title">How to Use the Medical Poster Converter</h2>
-                    <p class="modal-subtitle">Transform your research posters into beautiful websites</p>
-                    
-                    <div style="margin-bottom: 32px;">
-                        <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #16a34a;">🚀 Quick Start Guide</h3>
-                        <div style="background: #f0fdf4; padding: 24px; border-radius: 12px; border: 1px solid #bbf7d0;">
-                            <div style="display: flex; align-items: start; gap: 16px; margin-bottom: 16px;">
-                                <div style="width: 32px; height: 32px; background: #16a34a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 600;">1</div>
-                                <div>
-                                    <strong>Upload Your Poster</strong><br>
-                                    <span style="color: #6b7280;">Drag and drop or click to upload your PDF, Word document, or image file</span>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: start; gap: 16px; margin-bottom: 16px;">
-                                <div style="width: 32px; height: 32px; background: #16a34a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 600;">2</div>
-                                <div>
-                                    <strong>Review Extracted Content</strong><br>
-                                    <span style="color: #6b7280;">The app automatically extracts text from PDFs and organizes it into sections</span>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: start; gap: 16px; margin-bottom: 16px;">
-                                <div style="width: 32px; height: 32px; background: #16a34a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 600;">3</div>
-                                <div>
-                                    <strong>Edit and Customize</strong><br>
-                                    <span style="color: #6b7280;">Edit text with formatting options, change icons, reorder sections, add images</span>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: start; gap: 16px;">
-                                <div style="width: 32px; height: 32px; background: #16a34a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 600;">4</div>
-                                <div>
-                                    <strong>Export Your Website</strong><br>
-                                    <span style="color: #6b7280;">Download as HTML, React component, or Next.js page</span>
-                                </div>
-                            </div>
-                        </div>
+          )}
+        </div>
+        ` : ''}
+        {sections.map((section) => {
+          if (section.isHeader) {
+            return (
+              <header
+                key={section.id}
+                id={section.id}
+                style={{
+                  background: \`linear-gradient(135deg, ${primaryColor}, ${secondaryColor})\`,
+                  color: 'white',
+                  padding: '60px 40px',
+                  borderRadius: '16px',
+                  marginBottom: '30px',
+                  textAlign: '${headerAlignment}',
+                  position: 'relative'
+                }}
+              >
+                {logoUrl && (
+                  <div>
+                    <img
+                      src={logoUrl}
+                      alt="Logo"
+                      style={{
+                        maxWidth: \`\${logoSize}px\`,
+                        maxHeight: \`\${logoSize}px\`,
+                        marginBottom: '20px',
+                        background: 'white',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        display: 'inline-block'
+                      }}
+                    />
+                  </div>
+                )}
+                {section.content.map((content, idx) => (
+                  <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />
+                ))}
+              </header>
+            );
+          }
+          return (
+            <section
+              key={section.id}
+              id={section.id}
+              style={{
+                background: 'white',
+                padding: '30px',
+                marginBottom: '20px',
+                borderRadius: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                scrollMarginTop: '${layoutStyle === 'sections' ? '80px' : '20px'}'
+              }}
+            >
+              <h2 style={{ color: '${primaryColor}', marginTop: 0 }}>{section.icon} {section.name}</h2>
+              {section.content.map((content, idx) => {
+                if (content.type === 'text') {
+                  return <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />;
+                }
+                if (content.type === 'image' && content.url) {
+                  return (
+                    <div key={idx} style={{ textAlign: 'center', margin: '20px 0' }}>
+                      <img src={content.url} alt={section.name} style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                      {content.caption && (
+                        <div style={{ fontStyle: 'italic', marginTop: '12px' }} dangerouslySetInnerHTML={{ __html: content.caption }} />
+                      )}
                     </div>
-                    
-                    <div style="margin-bottom: 32px;">
-                        <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #16a34a;">✨ Key Features</h3>
-                        <ul style="line-height: 1.8; color: #6b7280; margin-left: 20px;">
-                            <li><strong>PDF Text Extraction:</strong> Automatically extracts content from PDF posters</li>
-                            <li><strong>Rich Text Editing:</strong> Format text with bold, italic, underline, and lists</li>
-                            <li><strong>Section Management:</strong> All sections can be reordered, including title/authors</li>
-                            <li><strong>Icon Customization:</strong> Click any section icon to change it</li>
-                            <li><strong>Image Support:</strong> Add images to any section</li>
-                            <li><strong>Color Schemes:</strong> Choose from predefined schemes or customize</li>
-                            <li><strong>Section Navigation:</strong> Fixed navigation menu for easy browsing</li>
-                            <li><strong>Responsive Design:</strong> Websites work perfectly on all devices</li>
-                            <li><strong>Multiple Export Formats:</strong> HTML, React, or Next.js</li>
-                        </ul>
-                    </div>
-                    
-                    <div style="background: #dcfce7; padding: 20px; border-radius: 12px; border: 1px solid #bbf7d0;">
-                        <h4 style="color: #15803d; margin-bottom: 12px;">💡 Tips for Best Results</h4>
-                        <ul style="line-height: 1.6; color: #374151; margin-left: 20px; font-size: 14px;">
-                            <li>Use high-quality PDFs with selectable text for best extraction</li>
-                            <li>Click on section icons to change them</li>
-                            <li>All sections (including title/authors) can be reordered with arrow buttons</li>
-                            <li>Use the Section Navigation layout for easy browsing</li>
-                            <li>Add images to make your sections more engaging</li>
-                            <li>Use the preview feature to test your website</li>
-                        </ul>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        // Auto-save on input change
-        document.addEventListener('input', function(e) {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-                updatePreview();
-            }
-        });
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) {
-                event.target.classList.remove('active');
-            }
+                  );
+                }
+                return null;
+              })}
+            </section>
+          );
+        })}
+        {layoutStyle === 'single' && (
+          <div style={{ textAlign: 'center', padding: '20px', background: 'white', marginTop: '40px', borderRadius: '12px' }}>
+            <button
+              onClick={() => window.print()}
+              style={{
+                background: \`linear-gradient(135deg, ${primaryColor}, ${secondaryColor})\`,
+                color: 'white',
+                padding: '16px 32px',
+                borderRadius: '50px',
+                fontWeight: 600,
+                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.2)',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              📄 Download PDF
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+`
         }
     </script>
 </body>
