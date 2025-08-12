@@ -617,12 +617,15 @@
         }
 
         .section-content {
-            padding: 24;
-            max-height: 10000;
+        padding: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: all 0.3s ease;
         }
 
         .section-content.expanded {
-            padding: 24px;
+        max-height: 100000px; /* A very large value to allow for smooth transition and unlimited scrolling */
+        padding: 24px;
         }
 
         /* Content Block */
@@ -3432,3 +3435,4 @@ export default function PosterPage() {
     </script>
 </body>
 </html>
+
