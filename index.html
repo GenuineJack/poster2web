@@ -3,1425 +3,469 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical Poster Converter - Transform Research into Beautiful Websites</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%221em%22 font-size=%2216%22>🖥️</text></svg>">
+    <title>SiteWeave - Transform Documents into Beautiful Websites</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%221em%22 font-size=%2216%22>🧶</text></svg>">
+    
+    <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- Set PDF.js worker -->
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
     </script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: #f8fafc;
-            color: #1a1a1a;
-            line-height: 1.6;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-        }
-
-        .main-content {
-            flex: 1;
-        }
-
-        /* Screen Management */
-        .screen {
-            display: none;
-            min-height: calc(100vh - 120px);
-        }
-
-        .screen.active {
-            display: block;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Header Icons */
-        .header-icons {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 12px;
-            z-index: 100;
-        }
-
-        .icon-button {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 20px;
-            color: #6b7280;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .icon-button:hover {
-            background: #f0fdf4;
-            border-color: #16a34a;
-            color: #16a34a;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Auto-save indicator */
-        .autosave-indicator {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 12px;
-            padding: 8px 16px;
-            font-size: 14px;
-            color: #16a34a;
-            z-index: 1000;
-            transition: all 0.3s ease;
-            opacity: 0;
-        }
-
-        .autosave-indicator.show {
-            opacity: 1;
-        }
-
-        .autosave-indicator.saving {
-            background: #fef3c7;
-            border-color: #f59e0b;
-            color: #d97706;
-        }
-
-        /* Upload Screen */
-        .upload-container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .drop-zone {
-            background: white;
-            border: 3px dashed #e5e7eb;
-            border-radius: 20px;
-            padding: 60px 40px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        .drop-zone:hover {
-            border-color: #6366f1;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .drop-zone.drag-over {
-            border-color: #6366f1;
-            background: #f0f9ff;
-        }
-
-        .upload-icon {
-            display: flex;
-            justify-content: center;
-            animation: pulse 2s ease-in-out infinite;
-            margin-bottom: 24px;
-        }
-
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        .upload-title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 8px;
-        }
-
-        .upload-subtitle {
-            font-size: 16px;
-            color: #6b7280;
-            margin-bottom: 24px;
-        }
-
-        .browse-button {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            color: white;
-            padding: 12px 32px;
-            border-radius: 30px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3);
-        }
-
-        .browse-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4);
-        }
-
-        .upload-formats {
-            font-size: 14px;
-            color: #9ca3af;
-            margin-top: 20px;
-        }
-
-        /* Loading Screen */
-        .loading-screen {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .loading-screen.active {
-            display: flex;
-        }
-
-        .loading-container {
-            text-align: center;
-            color: white;
-            padding: 20px;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255, 255, 255, 0.2);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 24px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .loading-title {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
-        .loading-message {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-
-        /* Editor Screen */
-        .editor-header {
-            background: white;
-            padding: 24px;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .back-button {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            color: #16a34a;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .back-button:hover {
-            background: #dcfce7;
-            transform: translateY(-1px);
-        }
-
-        .editor-title {
-            text-align: center;
-            flex: 1;
-        }
-
-        .editor-title h1 {
-            font-size: 28px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 4px;
-        }
-
-        .pdf-name {
-            font-size: 14px;
-            color: #6b7280;
-        }
-
-        .editor-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 24px;
-            padding: 24px 24px 0;
-            background: white;
-        }
-
-        .tab {
-            padding: 12px 0;
-            font-size: 16px;
-            font-weight: 500;
-            color: #6b7280;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s ease;
-        }
-
-        .tab.active {
-            color: #6366f1;
-            border-bottom-color: #6366f1;
-        }
-
-        .tab:hover:not(.active) {
-            color: #374151;
-        }
-
-        /* Button Styles */
-        .btn {
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: #6b7280;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .btn-secondary:hover {
-            background: #f9fafb;
-            border-color: #6366f1;
-            color: #6366f1;
-            transform: translateY(-1px);
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-
-        /* Main Content */
-        .editor-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            min-height: 600px;
-            background: white;
-        }
-
-        .form-section {
-            padding: 32px;
-            border-right: 1px solid #f3f4f6;
-            overflow-y: auto;
-            max-height: 700px;
-        }
-
-        .preview-section {
-            padding: 32px;
-            background: #fafafa;
-        }
-
-        /* Form Elements */
-        .form-group {
-            margin-bottom: 28px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 8px;
-        }
-
-        .form-input,
-        .form-textarea,
-        .form-select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid #d1d5db;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.2s ease;
-            background: white;
-        }
-
-        .form-input:focus,
-        .form-textarea:focus,
-        .form-select:focus {
-            outline: none;
-            border-color: #16a34a;
-            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
-        }
-
-        /* Rich Text Editor */
-        .rich-editor {
-            border: 1px solid #d1d5db;
-            border-radius: 12px;
-            overflow: hidden;
-            background: white;
-        }
-
-        .editor-toolbar {
-            display: flex;
-            gap: 4px;
-            padding: 8px;
-            background: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
-            flex-wrap: wrap;
-        }
-
-        .toolbar-btn {
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: white;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        .toolbar-btn:hover {
-            background: #e5e7eb;
-            transform: translateY(-1px);
-        }
-
-        .toolbar-btn.active {
-            background: #16a34a;
-            color: white;
-        }
-
-        .toolbar-separator {
-            width: 1px;
-            background: #d1d5db;
-            margin: 4px 8px;
-        }
-
-        .toolbar-select {
-            padding: 6px 8px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            background: white;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .editor-content-area {
-            min-height: 150px;
-            max-height: 400px;
-            overflow-y: auto;
-            padding: 16px;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-
-        .editor-content-area:focus {
-            outline: none;
-            background: #fafafa;
-        }
-
-        .editor-content-area ul,
-        .editor-content-area ol {
-            margin-left: 20px;
-            margin-bottom: 10px;
-        }
-
-        /* Section Editor */
-        .sections-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .sections-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a1a1a;
-        }
-
-        .section-editor {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            margin-bottom: 20px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            transition: all 0.2s ease;
-        }
-
-        .section-editor:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .section-editor.header-section {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            border-color: #bbf7d0;
-        }
-
-        .section-header {
-            padding: 20px 24px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #fafafa;
-            border-bottom: 1px solid #f3f4f6;
-            transition: all 0.2s ease;
-        }
-
-        .section-editor.header-section .section-header {
-            background: rgba(255, 255, 255, 0.7);
-        }
-
-        .section-header:hover {
-            background: #f5f5f5;
-        }
-
-        .section-title-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-        }
-
-        .section-icon {
-            font-size: 20px;
-        }
-
-        .section-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1a1a1a;
-        }
-
-        .section-controls {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .icon-btn {
-            width: 32px;
-            height: 32px;
-            border: 1px solid #e5e7eb;
-            background: white;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
-
-        .icon-btn:hover:not(:disabled) {
-            background: #f3f4f6;
-            border-color: #16a34a;
-            color: #16a34a;
-        }
-
-        .icon-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .icon-btn.danger:hover {
-            background: #fee2e2;
-            border-color: #ef4444;
-            color: #ef4444;
-        }
-
-        .expand-indicator {
-            color: #9ca3af;
-            font-size: 12px;
-            margin-left: 8px;
-            transition: transform 0.3s ease;
-            display: inline-block;
-        }
-
-        .section-content {
-        padding: 0;
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease-out, padding 0.3s ease-out; /* Add a specific transition for max-height */
-        }
-
-        .section-content.expanded {
-        max-height: 100000px; /* A very large value to allow for smooth transition and unlimited scrolling */
-        padding: 24px;
-        }
-
-        /* Content Block */
-        .content-block {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            position: relative;
-        }
-
-        .content-block-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .content-block-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #6b7280;
-            flex: 1;
-        }
-
-        .content-block-controls {
-            display: flex;
-            gap: 8px;
-        }
-
-        .content-block-controls .icon-btn {
-            width: 28px;
-            height: 28px;
-            font-size: 12px;
-        }
-
-        /* Image Container */
-        .image-container {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .image-upload-area {
-            border: 2px dashed #d1d5db;
-            border-radius: 8px;
-            padding: 24px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .image-upload-area:hover {
-            border-color: #16a34a;
-            background: #f0fdf4;
-        }
-
-        .image-preview {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin-bottom: 12px;
-        }
-
-        .image-caption-container {
-            margin-top: 12px;
-        }
-
-        .image-caption-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #6b7280;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        /* Add content buttons */
-        .add-content-container {
-            display: flex;
-            gap: 12px;
-            margin-top: 16px;
-            padding: 16px;
-            background: #f0fdf4;
-            border: 1px dashed #bbf7d0;
-            border-radius: 12px;
-            justify-content: center;
-        }
-
-        /* HTML toggle */
-        .html-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            font-size: 14px;
-            color: #d97706;
-        }
-
-        .html-toggle input[type="checkbox"] {
-            cursor: pointer;
-        }
-
-        /* Preview */
-        .preview-container {
-            background: white;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e5e7eb;
-            height: 100%;
-        }
-
-        .preview-header {
-            padding: 16px 20px;
-            background: #fafafa;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .preview-dots {
-            display: flex;
-            gap: 6px;
-        }
-
-        .preview-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .preview-dot:nth-child(1) { background: #ff5f57; }
-        .preview-dot:nth-child(2) { background: #ffbd2e; }
-        .preview-dot:nth-child(3) { background: #28ca42; }
-
-        .preview-url {
-            font-size: 14px;
-            color: #9ca3af;
-            margin-left: 8px;
-        }
-
-        .preview-iframe {
-            width: 100%;
-            height: 500px;
-            border: none;
-            background: white;
-        }
-
-        /* Color Picker */
-        .color-picker {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .color-input {
-            width: 60px;
-            height: 40px;
-            padding: 4px;
-            border: 1px solid #d1d5db;
-            border-radius: 12px;
-            cursor: pointer;
-        }
-
-        /* Range Slider */
-        .range-group {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .range-input {
-            flex: 1;
-            height: 6px;
-            border-radius: 3px;
-            background: #e5e7eb;
-            outline: none;
-            -webkit-appearance: none;
-        }
-
-        .range-input::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .range-input::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .range-value {
-            font-size: 14px;
-            font-weight: 600;
-            color: #16a34a;
-            min-width: 50px;
-            text-align: right;
-        }
-
-        /* Modals */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 20px;
-            backdrop-filter: blur(10px);
-        }
-
-        .modal.active {
-            display: flex;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 32px;
-            max-width: 600px;
-            width: 100%;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: relative;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-        }
-
-        .modal-content.large {
-            max-width: 95%;
-            height: 95vh;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .modal-header {
-            padding: 32px 32px 0;
-            flex-shrink: 0;
-        }
-
-        .modal-body {
-            flex: 1;
-            overflow: hidden;
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 40px;
-            height: 40px;
-            border: none;
-            background: #f3f4f6;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 18px;
-            color: #6b7280;
-            transition: all 0.2s ease;
-        }
-
-        .close-btn:hover {
-            background: #e5e7eb;
-            color: #1a1a1a;
-            transform: scale(1.05);
-        }
-
-        .modal-title {
-            font-size: 28px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 8px;
-        }
-
-        .modal-subtitle {
-            font-size: 16px;
-            color: #6b7280;
-            margin-bottom: 32px;
-        }
-
-        /* Export Options */
-        .export-option {
-            display: block;
-            padding: 20px 24px;
-            margin-bottom: 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: white;
-        }
-
-        .export-option:hover {
-            border-color: #16a34a;
-            background: #f0fdf4;
-            transform: translateY(-1px);
-        }
-
-        .export-option input[type="radio"] {
-            margin-right: 12px;
-            transform: scale(1.2);
-        }
-
-        .export-option-title {
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 4px;
-        }
-
-        .export-option-desc {
-            font-size: 14px;
-            color: #6b7280;
-        }
-
-        /* Toast Notification */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: #1f2937;
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            z-index: 1001;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            max-width: 400px;
-        }
-
-        .toast.show {
-            transform: translateX(0);
-        }
-
-        .toast.success {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-        }
-
-        .toast.error {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        }
-
-        /* Footer */
-        .footer {
-            background: white;
-            border-top: 1px solid #e5e7eb;
-            padding: 24px 16px;
-            text-align: center;
-            margin-top: 40px;
-        }
-
-        .footer-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-            font-size: 14px;
-            color: #6b7280;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .footer a {
-            color: #16a34a;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .footer a:hover {
-            color: #15803d;
-            text-decoration: underline;
-        }
-
-        .pizza-button {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            color: white !important;
-            padding: 8px 16px;
-            border-radius: 20px;
-            text-decoration: none !important;
-            font-weight: 600;
-            font-size: 13px;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
-        }
-
-        .pizza-button:hover {
-            background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
-            color: white !important;
-        }
-
-        /* PDF Download Button */
-        .download-pdf-btn {
-            background: linear-gradient(135deg, var(--primary-color, #16a34a), var(--secondary-color, #15803d));
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: 600;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .download-pdf-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .editor-header {
-                flex-direction: column;
-                gap: 16px;
-                padding: 16px;
-            }
-
-            .editor-actions {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .editor-content {
-                grid-template-columns: 1fr;
-            }
-
-            .form-section {
-                border-right: none;
-                border-bottom: 1px solid #f3f4f6;
-            }
-
-            .upload-container {
-                padding: 16px;
-            }
-
-            .drop-zone {
-                padding: 40px 20px;
-            }
-
-            .upload-title {
-                font-size: 20px;
-            }
-
-            .tabs {
-                padding: 16px 16px 0;
-                gap: 16px;
-            }
-
-            .form-section,
-            .preview-section {
-                padding: 20px;
-            }
-
-            .footer-content {
-                gap: 12px;
-            }
-
-            .pizza-button {
-                font-size: 12px;
-                padding: 6px 14px;
-            }
-        }
-
-        /* Utility Classes */
-        .hidden {
-            display: none !important;
-        }
-
-        /* Hide file input */
-        input[type="file"] {
-            display: none;
-        }
-
-        /* Preview Frame Styles */
-        .preview-frame {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .preview-frame.desktop {
-            width: 100%;
-            max-width: 1200px;
-            height: 80vh;
-        }
-
-        .preview-frame.tablet-h {
-            width: 1024px;
-            height: 768px;
-        }
-
-        .preview-frame.tablet-v {
-            width: 768px;
-            height: 1024px;
-        }
-
-        .preview-frame.mobile {
-            width: 375px;
-            height: 667px;
-        }
-
-        @media (max-width: 768px) {
-            .preview-frame.tablet-h,
-            .preview-frame.tablet-v {
-                width: 90vw;
-                height: 70vh;
-            }
-            
-            .preview-frame.mobile {
-                width: 375px;
-                height: 60vh;
-            }
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-    </style>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div id="autosaveIndicator" class="autosave-indicator">
-        💾 Auto-saved
-    </div>
+    <!-- Auto-save Indicator -->
+    <div id="autosaveIndicator" class="autosave-indicator">💾 Saved</div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
 
     <div class="main-content">
+        <!-- UPLOAD SCREEN -->
         <div id="uploadScreen" class="screen active">
             <div class="header-icons">
-                <button class="icon-button" onclick="showInfo()" title="Info">
+                <button class="icon-button" onclick="showInfo()" title="About SiteWeave" aria-label="About SiteWeave">
                     <span>ℹ️</span>
                 </button>
-                <button class="icon-button" onclick="goHome()" title="Home">
+                <button class="icon-button" onclick="goHome()" title="Home" aria-label="Home">
                     <span>🏠</span>
                 </button>
             </div>
 
-            <div style="max-width: 1200px; margin: 0 auto; padding: 40px 20px; text-align: center;">
-                <header style="margin-bottom: 40px;">
-                    <h1 style="font-size: 48px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px; line-height: 1.1;">
-                        Medical Poster Converter
+            <div style="max-width: 1200px; margin: 0 auto; padding: 64px 20px 40px;">
+                <!-- Enhanced Hero Section -->
+                <header style="text-align: center; margin-bottom: 56px;">
+                    <div style="display: inline-flex; align-items: center; background: linear-gradient(135deg, var(--primary) 0%, hsl(142 76% 45%) 100%); color: white; padding: 10px 28px; border-radius: 50px; font-size: 14px; font-weight: 600; margin-bottom: 32px; box-shadow: var(--shadow-md); border: 1px solid hsl(142 76% 86% / 0.5); backdrop-filter: blur(10px); letter-spacing: 0.025em;">
+                        ⚡ Single Page Websites in a Flash ⚡
+                    </div>
+                    <h1 style="font-size: clamp(48px, 8vw, 72px); font-weight: 900; margin-bottom: 24px; line-height: 1.1; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--primary) 0%, hsl(142 76% 35%) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                        <span style="color: var(--primary); font-weight: 900;">SiteWeave</span>
                     </h1>
-                    <p style="font-size: 20px; color: #6b7280; max-width: 600px; margin: 0 auto;">
-                        Transform your conference posters into beautiful, responsive websites in minutes
+                    <p style="font-size: clamp(18px, 3vw, 24px); color: var(--muted-foreground); max-width: 600px; margin: 0 auto 48px; line-height: 1.5; font-weight: 400;">
+                        Transform documents into beautiful websites in minutes.<br>
+                        <strong style="color: var(--foreground); font-weight: 600;">No coding required.</strong>
                     </p>
                 </header>
 
+                <!-- Enhanced Upload Container -->
                 <div class="upload-container">
                     <div id="dropZone" class="drop-zone">
-                        <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg">
+                        <input type="file" id="fileInput" accept=".pdf,.pptx,.txt,.png,.jpg,.jpeg" aria-label="Choose file to upload">
                         <div class="upload-icon">
-                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                 <path d="M12 15L12 3M12 3L16 7M12 3L8 7" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M2 17L2 19C2 20.1046 2.89543 21 4 21L20 21C21.1046 21 22 20.1046 22 19L22 17" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <defs>
                                     <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#16a34a"/>
-                                        <stop offset="100%" stop-color="#15803d"/>
+                                        <stop offset="0%" stop-color="var(--primary)"/>
+                                        <stop offset="100%" stop-color="hsl(142 76% 45%)"/>
                                     </linearGradient>
                                 </defs>
                             </svg>
                         </div>
-                        <h3 class="upload-title">Drop your poster here</h3>
+                        <h3 class="upload-title">Drop your content here</h3>
                         <p class="upload-subtitle">or click anywhere to browse your files</p>
-                        <button type="button" class="browse-button" id="browseBtn">Choose File</button>
+                        <button type="button" class="browse-button" id="browseBtn">Start Weaving</button>
                     </div>
+                    
                     <div class="upload-formats">
-                        Supports PDF, Word (DOCX), Text (TXT), and image files
+                        Supports PDF, PowerPoint (PPTX), Text (TXT), and image files
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button type="button" class="browse-button secondary" id="blankBtn">Create Blank Website</button>
                     </div>
                 </div>
 
-                <div style="margin-top: 80px;">
-                    <h2 style="font-size: 32px; font-weight: 700; color: #1a1a1a; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1px;">
-                        What You Get
+                <!-- Features Preview Section -->
+                <section style="margin-top: 80px; text-align: center;">
+                    <h2 style="font-size: 24px; font-weight: 700; color: var(--foreground); margin-bottom: 16px; letter-spacing: -0.01em;">
+                        Why Choose SiteWeave?
                     </h2>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; max-width: 1000px; margin: 0 auto;">
-                        <div style="text-align: center;">
-                            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 24px; box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);">
-                                🤖
+                    <p style="color: var(--muted-foreground); margin-bottom: 48px; font-size: 16px; max-width: 500px; margin-left: auto; margin-right: auto;">
+                        The fastest way to turn your content into professional websites
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 32px; margin-top: 40px;">
+                        <div style="text-align: center; padding: 24px; background: var(--card); border-radius: var(--radius-xl); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--primary) 0%, hsl(142 76% 45%) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 24px;">
+                                🚀
                             </div>
-                            <h4 style="font-weight: 600; color: #1a1a1a; margin-bottom: 12px; font-size: 18px;">Smart Text Extraction</h4>
-                            <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">Automatically extracts content from PDFs and organizes into sections</p>
+                            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--foreground);">Lightning Fast</h3>
+                            <p style="color: var(--muted-foreground); font-size: 14px; line-height: 1.5;">Transform documents to websites in under 60 seconds</p>
                         </div>
-                        <div style="text-align: center;">
-                            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 24px; box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);">
-                                ✨
+                        
+                        <div style="text-align: center; padding: 24px; background: var(--card); border-radius: var(--radius-xl); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--primary) 0%, hsl(142 76% 45%) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 24px;">
+                                🎨
                             </div>
-                            <h4 style="font-weight: 600; color: #1a1a1a; margin-bottom: 12px; font-size: 18px;">Advanced Content Editing</h4>
-                            <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">Rich text formatting, images with captions, and HTML embedding</p>
+                            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--foreground);">Beautiful Design</h3>
+                            <p style="color: var(--muted-foreground); font-size: 14px; line-height: 1.5;">Professional templates with customizable themes</p>
                         </div>
-                        <div style="text-align: center;">
-                            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 24px; box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);">
+                        
+                        <div style="text-align: center; padding: 24px; background: var(--card); border-radius: var(--radius-xl); border: 1px solid var(--border); box-shadow: var(--shadow-xs);">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--primary) 0%, hsl(142 76% 45%) 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 24px;">
                                 📱
                             </div>
-                            <h4 style="font-weight: 600; color: #1a1a1a; margin-bottom: 12px; font-size: 18px;">Flexible Layouts</h4>
-                            <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">Mix text and images freely with PDF download button</p>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 24px; box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);">
-                                💾
-                            </div>
-                            <h4 style="font-weight: 600; color: #1a1a1a; margin-bottom: 12px; font-size: 18px;">Multiple Export Formats</h4>
-                            <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">Export as HTML, React component, or Next.js page</p>
+                            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--foreground);">Mobile Ready</h3>
+                            <p style="color: var(--muted-foreground); font-size: 14px; line-height: 1.5;">Responsive designs that work on all devices</p>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </div>
 
+        <!-- LOADING SCREEN -->
         <div id="loadingScreen" class="screen loading-screen">
             <div class="loading-container">
                 <div class="loading-spinner"></div>
-                <h2 id="loadingTitle" class="loading-title">Processing your poster</h2>
-                <p id="loadingMessage" class="loading-message">This may take a moment</p>
+                <h2 id="loadingTitle" class="loading-title">Processing your file</h2>
+                <p id="loadingMessage" class="loading-message">Extracting content and analyzing structure...</p>
             </div>
         </div>
 
+        <!-- EDITOR SCREEN -->
         <div id="editorScreen" class="screen">
+            <!-- Editor Header -->
             <div class="editor-header">
                 <button id="backButton" class="back-button">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                    New Poster
+                    ← Back to Upload
                 </button>
                 <div class="editor-title">
-                    <h1>Poster Editor</h1>
-                    <p class="pdf-name" id="pdfName"></p>
+                    <h1>SiteWeave Editor</h1>
+                    <div id="pdfName" class="pdf-name">Document.pdf</div>
                 </div>
                 <div class="editor-actions">
                     <button class="btn btn-secondary" onclick="showPreviewModal()">
-                        👁 Preview
+                        👁️ Preview
                     </button>
                     <button class="btn btn-primary" onclick="exportWebsite()">
                         💾 Export
                     </button>
+                    <button id="builderThemeToggle" class="btn btn-secondary" onclick="toggleBuilderDarkMode()">🌙 Dark</button>
                 </div>
             </div>
 
+            <!-- Tabs -->
             <div class="tabs">
                 <div class="tab active" data-tab="content" onclick="switchTab('content')">📝 Content</div>
                 <div class="tab" data-tab="design" onclick="switchTab('design')">🎨 Design</div>
+                <div class="tab" data-tab="settings" onclick="switchTab('settings')">⚙️ Settings</div>
             </div>
 
+            <!-- Editor Content -->
             <div class="editor-content">
+                <!-- Left Side: Form/Editor -->
                 <div class="form-section">
+                    <!-- Content Tab -->
                     <div id="contentTab" class="tab-content active">
-                        <div class="form-group">
-                            <div class="sections-header">
-                                <h3 class="sections-title">📑 All Sections</h3>
-                                <button class="btn btn-secondary" onclick="addSection()">+ Add Section</button>
-                            </div>
-                            <div id="sectionsContainer">
-                                </div>
+                        <div class="sections-header">
+                            <h2 class="sections-title">📄 Sections</h2>
+                            <button class="btn btn-small btn-primary" onclick="addSection()">
+                                + Add Section
+                            </button>
+                        </div>
+                        <div id="sectionsContainer">
+                            <!-- Sections will be dynamically added here -->
                         </div>
                     </div>
 
+                    <!-- Design Tab -->
                     <div id="designTab" class="tab-content">
+                        <h2 style="margin-bottom: 24px;">🎨 Design Settings</h2>
+                        
+                        <!-- Color Scheme -->
                         <div class="form-group">
-                            <label class="form-label">🎨 Color Scheme</label>
+                            <label class="form-label">
+                                Color Scheme
+                                <span class="info-tooltip" title="Choose a predefined color scheme">ℹ️</span>
+                            </label>
                             <select id="colorScheme" class="form-select" onchange="updateColorScheme()">
-                                <option value="research">Research Green</option>
-                                <option value="clinical">Clinical Blue</option>
-                                <option value="pharma">Pharma Purple</option>
-                                <option value="modern">Modern Teal</option>
-                                <option value="academic">Academic Red</option>
-                                <option value="custom">Custom Colors</option>
+                                <option value="growth-green">🌱 Growth Green</option>
+                                <option value="trust-blue">💙 Trust Blue</option>
+                                <option value="premium-purple">💜 Premium Purple</option>
+                                <option value="bold-red">❤️ Bold Red</option>
+                                <option value="modern-teal">🦋 Modern Teal</option>
+                                <option value="sunset-orange">🌅 Sunset Orange</option>
+                                <option value="energy-yellow">⚡ Energy Yellow</option>
+                                <option value="professional-grey">📘 Professional Grey</option>
+                                <option value="custom">🎨 Custom</option>
                             </select>
                         </div>
 
+                        <!-- Custom Colors -->
                         <div class="form-group">
-                            <label class="form-label">🎨 Primary Color</label>
+                            <label class="form-label">Primary Color</label>
                             <div class="color-picker">
-                                <input type="color" id="primaryColor" class="color-input" value="#16a34a" onchange="updatePreview(); document.getElementById('primaryColorHex').value = this.value;">
-                                <input type="text" id="primaryColorHex" class="form-input" value="#16a34a" onchange="document.getElementById('primaryColor').value = this.value; updatePreview();">
+                                <input type="color" id="primaryColor" class="color-input" value="#16a34a">
+                                <input type="text" id="primaryColorHex" class="form-input" value="#16a34a" style="width: 100px; margin-left: 12px;">
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">🎨 Secondary Color</label>
+                            <label class="form-label">Secondary Color</label>
                             <div class="color-picker">
-                                <input type="color" id="secondaryColor" class="color-input" value="#15803d" onchange="updatePreview(); document.getElementById('secondaryColorHex').value = this.value;">
-                                <input type="text" id="secondaryColorHex" class="form-input" value="#15803d" onchange="document.getElementById('secondaryColor').value = this.value; updatePreview();">
+                                <input type="color" id="secondaryColor" class="color-input" value="#15803d">
+                                <input type="text" id="secondaryColorHex" class="form-input" value="#15803d" style="width: 100px; margin-left: 12px;">
                             </div>
                         </div>
 
+                        <!-- Logo Upload -->
                         <div class="form-group">
-                            <label class="form-label">🖼️ Logo</label>
-                            <input type="file" id="logoInput" accept="image/*" onchange="handleLogoUpload(event)">
-                            <button class="btn btn-secondary" onclick="document.getElementById('logoInput').click()">
-                                Upload Logo
-                            </button>
-                            <div id="logoPreview"></div>
+                            <label class="form-label">
+                                Logo
+                                <span class="info-tooltip" title="Upload a logo for your website header">ℹ️</span>
+                            </label>
+                            <label for="logoInput" class="file-upload-label" style="display: inline-block; padding: 10px 20px; background: var(--primary); color: white; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s ease; font-weight: 500;">
+                                Choose Logo Image
+                            </label>
+                            <input type="file" id="logoInput" accept="image/*" onchange="handleLogoUpload(event)" style="display: none;">
+                            <div id="logoPreview" style="margin-top: 12px;"></div>
                         </div>
 
+                        <!-- Logo Size -->
                         <div class="form-group">
-                            <label class="form-label">📏 Logo Size</label>
+                            <label class="form-label">Logo Size</label>
                             <div class="range-group">
-                                <input type="range" id="logoSize" class="range-input" min="60" max="200" value="120" onchange="updateLogoSize()">
-                                <span class="range-value" id="logoSizeValue">120px</span>
+                                <input type="range" id="logoSize" class="range-input" min="60" max="200" value="120" oninput="updateLogoSize()">
+                                <span id="logoSizeValue" class="range-value">120px</span>
                             </div>
                         </div>
 
+                        <!-- Header Alignment -->
                         <div class="form-group">
-                            <label class="form-label">📐 Header Alignment</label>
-                            <select id="headerAlignment" class="form-select" onchange="updatePreview()">
-                                <option value="center">Center</option>
+                            <label class="form-label">Header Alignment</label>
+                            <select id="headerAlignment" class="form-select">
                                 <option value="left">Left</option>
+                                <option value="center" selected>Center</option>
                                 <option value="right">Right</option>
                             </select>
                         </div>
 
+                        <!-- Typography -->
                         <div class="form-group">
-                            <label class="form-label">📝 Font Style</label>
-                            <select id="fontStyle" class="form-select" onchange="updatePreview()">
-                                <option value="system">System Font</option>
+                            <label class="form-label">Font Style</label>
+                            <select id="fontStyle" class="form-select">
+                                <option value="system" selected>System Default</option>
                                 <option value="serif">Serif</option>
                                 <option value="mono">Monospace</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">📐 Title Size</label>
+                            <label class="form-label">Title Size</label>
                             <div class="range-group">
-                                <input type="range" id="titleSize" class="range-input" min="24" max="60" value="32" onchange="updateTitleSize()">
-                                <span class="range-value" id="titleSizeValue">32px</span>
+                                <input type="range" id="titleSize" class="range-input" min="24" max="60" value="32" oninput="updateTitleSize()">
+                                <span id="titleSizeValue" class="range-value">32px</span>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">📏 Content Size</label>
+                            <label class="form-label">Content Size</label>
                             <div class="range-group">
-                                <input type="range" id="contentSize" class="range-input" min="14" max="24" value="16" onchange="updateContentSize()">
-                                <span class="range-value" id="contentSizeValue">16px</span>
+                                <input type="range" id="contentSize" class="range-input" min="14" max="24" value="16" oninput="updateContentSize()">
+                                <span id="contentSizeValue" class="range-value">16px</span>
                             </div>
                         </div>
 
+                        <!-- Layout Style -->
                         <div class="form-group">
-                            <label class="form-label">📱 Website Layout</label>
-                            <select id="layoutStyle" class="form-select" onchange="updatePreview()">
-                                <option value="single">Single Page</option>
-                                <option value="sections">Section Navigation</option>
+                            <label class="form-label">
+                                Layout Style
+                                <span class="info-tooltip" title="Choose how sections are navigated">ℹ️</span>
+                            </label>
+                            <select id="layoutStyle" class="form-select">
+                                <option value="single" selected>Single Page (Traditional)</option>
+                                <option value="sections">Section Navigation Bar</option>
                                 <option value="menu">Hamburger Menu</option>
                             </select>
                         </div>
                     </div>
+
+                    <!-- UPDATED Settings Tab -->
+                    <div id="settingsTab" class="tab-content">
+                        <h2 style="margin-bottom: 24px;">⚙️ Settings</h2>
+                        
+                        <!-- Download Button Configuration -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                📄 Download Button
+                                <span class="info-tooltip" title="Add a downloadable file for visitors">ℹ️</span>
+                            </label>
+                            <div class="file-upload-section">
+                                <label for="downloadFileInput" class="file-upload-label" style="display: inline-block; padding: 10px 20px; background: var(--primary); color: white; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s ease; font-weight: 500;">
+                                    Choose File to Upload
+                                </label>
+                                <input type="file" id="downloadFileInput" onchange="handleDownloadFileUpload(event)" style="display: none;">
+                                <div id="uploadedFileDisplay" class="uploaded-file-display" style="margin-top: 12px;">
+                                    <div class="no-file-message">
+                                        <span>📎</span>
+                                        <p>No file uploaded</p>
+                                        <small>Upload a PDF or document for visitors to download</small>
+                                    </div>
+                                </div>
+                                <input type="text" 
+                                       id="downloadButtonText" 
+                                       class="form-input" 
+                                       placeholder="Button text (e.g., 'Download Brochure')" 
+                                       style="margin-top: 12px;"
+                                       onchange="updateButtonSettings()">
+                            </div>
+                        </div>
+
+                        <!-- Contact Button Configuration -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                📧 Contact Button
+                                <span class="info-tooltip" title="Add a contact button with URL or email">ℹ️</span>
+                            </label>
+                            <input type="text" 
+                                   id="contactButtonUrl" 
+                                   class="form-input" 
+                                   placeholder="Website URL or email address"
+                                   onchange="updateButtonSettings()">
+                            <input type="text" 
+                                   id="contactButtonText" 
+                                   class="form-input" 
+                                   placeholder="Button text (e.g., 'Contact Us')" 
+                                   style="margin-top: 8px;"
+                                   onchange="updateButtonSettings()">
+                            <span class="form-help">URLs and emails are automatically detected</span>
+                        </div>
+
+                        <!-- Button Preview -->
+                        <div class="form-group">
+                            <label class="form-label">Button Preview</label>
+                            <div id="buttonPreview" style="padding: 16px; background: var(--muted); border-radius: var(--radius-lg); text-align: center;">
+                                <p style="color: var(--muted-foreground); font-size: 14px;">Configure buttons above to see preview</p>
+                            </div>
+                        </div>
+
+                        <!-- Analytics Code -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                📊 Analytics Code
+                                <span class="info-tooltip" title="Add Google Analytics or other tracking code">ℹ️</span>
+                            </label>
+                            <textarea id="analyticsCode" class="form-textarea" rows="4" placeholder="Paste your analytics tracking code here..."></textarea>
+                            <span class="form-help">This code will be added to the &lt;head&gt; section of your exported website</span>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- Right Side: Preview -->
                 <div class="preview-section">
                     <div class="preview-container">
                         <div class="preview-header">
                             <div class="preview-dots">
-                                <div class="preview-dot"></div>
-                                <div class="preview-dot"></div>
-                                <div class="preview-dot"></div>
+                                <span class="preview-dot"></span>
+                                <span class="preview-dot"></span>
+                                <span class="preview-dot"></span>
                             </div>
-                            <div class="preview-url">your-poster-website.com</div>
+                            <span class="preview-url">https://your-website.com</span>
                         </div>
-                        <iframe class="preview-iframe" id="websitePreview"></iframe>
+                        <iframe id="websitePreview" class="preview-iframe" srcdoc="<h1>Loading preview...</h1>"></iframe>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="modal">
+        <div class="modal-content large">
+            <button class="close-btn" onclick="closePreviewModal()">✕</button>
+            <div class="modal-header">
+                <h2 class="modal-title">Website Preview</h2>
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                    <button id="desktopBtn" class="btn btn-small btn-secondary active" onclick="setPreviewDevice('desktop')">💻 Desktop</button>
+                    <button id="tabletHBtn" class="btn btn-small btn-secondary" onclick="setPreviewDevice('tablet-h')">📱 Tablet H</button>
+                    <button id="tabletVBtn" class="btn btn-small btn-secondary" onclick="setPreviewDevice('tablet-v')">📱 Tablet V</button>
+                    <button id="mobileBtn" class="btn btn-small btn-secondary" onclick="setPreviewDevice('mobile')">📱 Mobile</button>
+                </div>
+            </div>
+            <div class="modal-body" style="display: flex; align-items: center; justify-content: center; padding: 40px;">
+                <div id="previewFrame" class="preview-frame desktop">
+                    <iframe id="fullPreview" style="width: 100%; height: 100%; border: none;" srcdoc="<h1>Loading preview...</h1>"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeExportModal()">✕</button>
+            <h2 class="modal-title">Export Your Website</h2>
+            <p class="modal-subtitle">Choose your preferred format</p>
+            
+            <div class="export-options">
+                <label class="export-option">
+                    <input type="radio" name="exportFormat" value="html" checked>
+                    <div>
+                        <div class="export-option-title">📄 HTML (Standalone)</div>
+                        <div class="export-option-desc">Single HTML file ready to deploy anywhere</div>
+                    </div>
+                </label>
+                
+                <label class="export-option">
+                    <input type="radio" name="exportFormat" value="react">
+                    <div>
+                        <div class="export-option-title">⚛️ React Component</div>
+                        <div class="export-option-desc">Modern React component with hooks</div>
+                    </div>
+                </label>
+                
+                <label class="export-option">
+                    <input type="radio" name="exportFormat" value="nextjs">
+                    <div>
+                        <div class="export-option-title">▲ Next.js Page</div>
+                        <div class="export-option-desc">Server-side rendered with SEO optimization</div>
+                    </div>
+                </label>
+            </div>
+            
+            <button class="btn btn-primary" style="width: 100%; margin-top: 24px;" onclick="downloadWebsite()">
+                💾 Download Website
+            </button>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeInfoModal()">✕</button>
+            <h2 class="modal-title">About SiteWeave</h2>
+            <p style="line-height: 1.7; color: var(--muted-foreground); margin-top: 12px;">
+                <strong>SiteWeave</strong> turns PDFs, PowerPoints, images, and text into polished, responsive single‑page websites.
+                Drag, edit, and export to plain HTML, React, or Next.js—no frameworks required.
+            </p>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin: 18px 0 6px;">
+                <div style="background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px;">
+                    <h4 style="margin:0 0 6px; color: var(--foreground);">🚀 Fast Build</h4>
+                    <div style="color: var(--muted-foreground);">Upload or start blank, then rearrange sections and content blocks with ease.</div>
+                </div>
+                <div style="background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px;">
+                    <h4 style="margin:0 0 6px; color: var(--foreground);">🎨 Design Controls</h4>
+                    <div style="color: var(--muted-foreground);">Color schemes, logos, type sizing, and layout modes.</div>
+                </div>
+                <div style="background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px;">
+                    <h4 style="margin:0 0 6px; color: var(--foreground);">🧰 Exports</h4>
+                    <div style="color: var(--muted-foreground);">Download clean HTML, a React component, or a Next.js page.</div>
+                </div>
+                <div style="background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px;">
+                    <h4 style="margin:0 0 6px; color: var(--foreground);">🧩 Add‑ons</h4>
+                    <div style="color: var(--muted-foreground);">Custom buttons (email, phone, links, downloads), print‑optimized mode, and SEO tags.</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; margin-top: 16px;">
+                <button class="btn btn-primary" onclick="getStartedFromModal()" style="flex:1">Get Started</button>
+                <button class="btn btn-secondary" onclick="closeInfoModal()">Close</button>
             </div>
         </div>
     </div>
@@ -1429,2011 +473,18 @@
     <footer class="footer">
         <div class="footer-content">
             <div>
-                Made with 🧡 by Jack
+                Made with 🧡 by <a href="https://www.linkedin.com/in/jackdemanche/" target="_blank" rel="noopener">Jack</a>
             </div>
-            <a href="https://coff.ee/genuinejack" target="_blank" class="pizza-button">
-                🍕 Buy me some pizza
-            </a>
         </div>
     </footer>
 
-    <div id="previewModal" class="modal">
-        <div class="modal-content large">
-            <div class="modal-header">
-                <button class="close-btn" onclick="closePreviewModal()">×</button>
-                <h2 class="modal-title">Website Preview</h2>
-                <div style="display: flex; gap: 12px; margin-top: 16px;">
-                    <button class="btn btn-secondary active" onclick="setPreviewDevice('desktop')" id="desktopBtn">
-                        💻 Desktop
-                    </button>
-                    <button class="btn btn-secondary" onclick="setPreviewDevice('tablet-h')" id="tabletHBtn">
-                        📱 Tablet (H)
-                    </button>
-                    <button class="btn btn-secondary" onclick="setPreviewDevice('tablet-v')" id="tabletVBtn">
-                        📱 Tablet (V)
-                    </button>
-                    <button class="btn btn-secondary" onclick="setPreviewDevice('mobile')" id="mobileBtn">
-                        📱 Mobile
-                    </button>
-                </div>
-            </div>
-            <div class="modal-body">
-                <div style="display: flex; justify-content: center; align-items: center; height: 100%; background: #f5f5f5; padding: 20px;">
-                    <div id="previewFrame" class="preview-frame desktop">
-                        <iframe style="width: 100%; height: 100%; border: none;" id="fullPreview"></iframe>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="exportModal" class="modal">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeExportModal()">×</button>
-            <h2 class="modal-title">Export Your Website</h2>
-            <p class="modal-subtitle">Choose your preferred export format:</p>
-            
-            <div style="margin-bottom: 32px;">
-                <label class="export-option">
-                    <input type="radio" name="exportFormat" value="html" checked> 
-                    <div>
-                        <div class="export-option-title">Standalone HTML</div>
-                        <div class="export-option-desc">Single file ready to deploy anywhere with PDF download</div>
-                    </div>
-                </label>
-                <label class="export-option">
-                    <input type="radio" name="exportFormat" value="react"> 
-                    <div>
-                        <div class="export-option-title">React Component</div>
-                        <div class="export-option-desc">Modern React with hooks and styled components</div>
-                    </div>
-                </label>
-                <label class="export-option">
-                    <input type="radio" name="exportFormat" value="nextjs"> 
-                    <div>
-                        <div class="export-option-title">Next.js Page</div>
-                        <div class="export-option-desc">Server-side rendered with SEO optimization</div>
-                    </div>
-                </label>
-            </div>
-            
-            <div style="display: flex; gap: 12px;">
-                <button class="btn btn-secondary" onclick="closeExportModal()" style="flex: 1;">Cancel</button>
-                <button class="btn btn-primary" onclick="downloadWebsite()" style="flex: 1;">Download Code</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="toast" class="toast"></div>
-
-    <script>
-        // Initialize app
-        let currentProject = {
-            title: 'My Research Poster',
-            authors: [],
-            sections: [],
-            logoUrl: null
-        };
-
-        // Get DOM elements
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const browseBtn = document.getElementById('browseBtn');
-        const uploadScreen = document.getElementById('uploadScreen');
-        const loadingScreen = document.getElementById('loadingScreen');
-        const editorScreen = document.getElementById('editorScreen');
-        const pdfName = document.getElementById('pdfName');
-        const backButton = document.getElementById('backButton');
-        const toast = document.getElementById('toast');
-
-        // Add missing helper functions
-        function showInfo() {
-            alert('Medical Poster Converter v1.0\n\nTransform your research posters into beautiful websites!\n\nSupported formats: PDF, Word, Text, and Images');
-        }
-
-        function goHome() {
-            if (editorScreen.classList.contains('active')) {
-                if (confirm('Are you sure you want to go home? Any unsaved changes will be lost.')) {
-                    editorScreen.classList.remove('active');
-                    uploadScreen.classList.add('active');
-                    currentProject = { title: 'My Research Poster', authors: [], sections: [], logoUrl: null };
-                    fileInput.value = '';
-                }
-            }
-        }
-
-        function showToast(message, type = 'success') {
-            toast.textContent = message;
-            toast.className = `toast show ${type}`;
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        // File upload event listeners
-        dropZone.addEventListener('click', () => fileInput.click());
-        browseBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            fileInput.click();
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            handleFile(e.target.files[0]);
-        });
-        
-        // Drag and drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
-        
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-        
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            handleFile(e.dataTransfer.files[0]);
-        });
-
-        // Back button
-        backButton.addEventListener('click', () => {
-            if (confirm('Are you sure you want to start over? All changes will be lost.')) {
-                editorScreen.classList.remove('active');
-                uploadScreen.classList.add('active');
-                currentProject = { title: 'My Research Poster', authors: [], sections: [], logoUrl: null };
-                fileInput.value = '';
-            }
-        });
-
-        // =======================================================
-        // UPDATED FILE HANDLING LOGIC
-        // =======================================================
-        
-        function handleFile(file) {
-            if (!file) return;
-
-            // Show loading screen
-            uploadScreen.classList.remove('active');
-            loadingScreen.classList.add('active');
-            
-            // This is a simple implementation. In a real-world app, you might use a more robust parser.
-            const fileExtension = file.name.split('.').pop().toLowerCase();
-
-            switch (fileExtension) {
-                case 'pdf':
-                    handlePDF(file);
-                    break;
-                case 'docx':
-                    showToast('DOCX file processing is not yet implemented.', 'error');
-                    resetUploadState();
-                    break;
-                case 'txt':
-                    handleText(file);
-                    break;
-                case 'png':
-                case 'jpg':
-                case 'jpeg':
-                    handleImage(file);
-                    break;
-                default:
-                    showToast('Unsupported file format.', 'error');
-                    resetUploadState();
-                    break;
-            }
-        }
-
-        function handlePDF(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(e.target.result) });
-                loadingTask.promise.then(function(pdf) {
-                    let extractedText = '';
-                    const promises = [];
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        promises.push(pdf.getPage(i).then(function(page) {
-                            return page.getTextContent().then(function(textContent) {
-                                extractedText += textContent.items.map(item => item.str).join(' ');
-                            });
-                        }));
-                    }
-                    Promise.all(promises).then(() => {
-                        currentProject.sections = parseTextIntoSections(extractedText, file.name);
-                        showEditor(file.name);
-                    }).catch(function(reason) {
-                        console.error('Error getting text content from PDF:', reason);
-                        showToast('Failed to extract text from PDF.', 'error');
-                        resetUploadState();
-                    });
-                }).catch(function(reason) {
-                    console.error('Error loading PDF:', reason);
-                    showToast('Failed to process PDF file.', 'error');
-                    resetUploadState();
-                });
-            };
-            reader.onerror = function() {
-                showToast('Failed to read PDF file.', 'error');
-                resetUploadState();
-            };
-            reader.readAsArrayBuffer(file);
-        }
-        
-        function handleText(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                currentProject.sections = parseTextIntoSections(text, file.name);
-                showEditor(file.name);
-            };
-            reader.onerror = function() {
-                showToast('Failed to read text file.', 'error');
-                resetUploadState();
-            };
-            reader.readAsText(file);
-        }
-
-        function handleImage(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                currentProject.sections = [
-                    {
-                        id: 'header',
-                        icon: '🖼️',
-                        name: 'Image Poster',
-                        isHeader: true,
-                        content: [
-                            { type: 'text', value: `<h1>${file.name}</h1>`, allowHtml: false }
-                        ]
-                    },
-                    {
-                        id: 'image-section',
-                        icon: '📷',
-                        name: 'Poster Image',
-                        isHeader: false,
-                        content: [
-                            { type: 'image', url: e.target.result, caption: file.name }
-                        ]
-                    }
-                ];
-                showEditor(file.name);
-            };
-            reader.onerror = function() {
-                showToast('Failed to read image file.', 'error');
-                resetUploadState();
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function showEditor(fileName) {
-            loadingScreen.classList.remove('active');
-            editorScreen.classList.add('active');
-            pdfName.textContent = fileName;
-            renderSections();
-            updatePreview();
-            showToast('File uploaded and processed successfully!', 'success');
-        }
-
-        function resetUploadState() {
-            loadingScreen.classList.remove('active');
-            uploadScreen.classList.add('active');
-            fileInput.value = '';
-        }
-
-        // A simple text parser to create sections based on common headings
-        function parseTextIntoSections(text, fileName) {
-            const sections = [
-                {
-                    id: 'header',
-                    icon: '🏥',
-                    name: 'Header',
-                    isHeader: true,
-                    content: [
-                        { type: 'text', value: `<h1>${fileName}</h1><p>Authors and Affiliations</p>`, allowHtml: false }
-                    ]
-                }
-            ];
-
-            const headings = [
-                'abstract', 'introduction', 'background', 'methods', 'results', 'discussion', 'conclusion', 'references'
-            ];
-            
-            const lines = text.split(/[\r\n]+/).map(line => line.trim()).filter(line => line.length > 0);
-            let currentSection = null;
-            let currentContent = '';
-
-            for (const line of lines) {
-                const lowerLine = line.toLowerCase();
-                const isHeading = headings.find(h => lowerLine.startsWith(h) && line.length < 50);
-
-                if (isHeading) {
-                    if (currentSection && currentContent.length > 0) {
-                        currentSection.content.push({ type: 'text', value: currentContent.trim(), allowHtml: false });
-                    }
-                    currentSection = {
-                        id: isHeading,
-                        icon: getIconForSection(isHeading),
-                        name: capitalizeFirstLetter(isHeading),
-                        content: []
-                    };
-                    sections.push(currentSection);
-                    currentContent = '';
-                } else if (currentSection) {
-                    currentContent += `<p>${line}</p>`;
-                }
-            }
-
-            if (currentSection && currentContent.length > 0) {
-                currentSection.content.push({ type: 'text', value: currentContent.trim(), allowHtml: false });
-            }
-
-            // If no sections were found, put everything in one "Content" section
-            if (sections.length <= 1 && text.length > 0) {
-                sections.push({
-                    id: 'content',
-                    icon: '📝',
-                    name: 'Content',
-                    content: [{ type: 'text', value: `<p>${text}</p>`, allowHtml: false }]
-                });
-            }
-
-            return sections;
-        }
-
-        function getIconForSection(name) {
-            const icons = {
-                'abstract': '📄', 'introduction': '📖', 'background': '📚', 'methods': '🔬',
-                'results': '📊', 'discussion': '💬', 'conclusion': '✅', 'references': '🔗'
-            };
-            return icons[name] || '📝';
-        }
-
-        function capitalizeFirstLetter(string) {
-            return string.charAt(0).toUpperCase() + string.slice(1);
-        }
-        
-        // =======================================================
-        // END UPDATED FILE HANDLING LOGIC
-        // =======================================================
-
-
-        // Initialize editor with sample sections
-        function initializeEditor() {
-            // Add sample sections
-            currentProject.sections = [
-                {
-                    id: 'header',
-                    icon: '🏥',
-                    name: 'Header',
-                    isHeader: true,
-                    content: [
-                        { type: 'text', value: '<h1>Research Poster Title</h1><p>Authors and Affiliations</p>', allowHtml: false }
-                    ]
-                },
-                {
-                    id: 'abstract',
-                    icon: '📄',
-                    name: 'Abstract',
-                    content: [
-                        { type: 'text', value: 'Your abstract content here...', allowHtml: false }
-                    ]
-                },
-                {
-                    id: 'introduction',
-                    icon: '📖',
-                    name: 'Introduction',
-                    content: [
-                        { type: 'text', value: 'Introduction content...', allowHtml: false }
-                    ]
-                },
-                {
-                    id: 'methods',
-                    icon: '🔬',
-                    name: 'Methods',
-                    content: [
-                        { type: 'text', value: 'Methods description...', allowHtml: false }
-                    ]
-                },
-                {
-                    id: 'results',
-                    icon: '📊',
-                    name: 'Results',
-                    content: [
-                        { type: 'text', value: 'Results and findings...', allowHtml: false }
-                    ]
-                },
-                {
-                    id: 'conclusion',
-                    icon: '✅',
-                    name: 'Conclusion',
-                    content: [
-                        { type: 'text', value: 'Conclusion and future work...', allowHtml: false }
-                    ]
-                }
-            ];
-            
-            renderSections();
-            
-            // Auto-expand the first non-header section
-            const firstSection = currentProject.sections.find(s => !s.isHeader);
-            if (firstSection) {
-                const sectionContent = document.getElementById(`section-${firstSection.id}`);
-                if (sectionContent) {
-                    sectionContent.classList.add('expanded');
-                    const section = document.querySelector(`.section-editor[data-id="${firstSection.id}"]`);
-                    const indicator = section.querySelector('.expand-indicator');
-                    if (indicator) {
-                        indicator.style.transform = 'rotate(180deg)';
-                    }
-                }
-            }
-            
-            updatePreview();
-        }
-
-        // Create unique ID
-        function createUniqueId() {
-            return 'id-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        }
-
-        // Render sections in the editor
-        function renderSections() {
-            const container = document.getElementById('sectionsContainer');
-            
-            // Store expanded states before re-rendering
-            const expandedStates = {};
-            currentProject.sections.forEach(section => {
-                const sectionContent = document.getElementById(`section-${section.id}`);
-                if (sectionContent) {
-                    expandedStates[section.id] = sectionContent.classList.contains('expanded');
-                }
-            });
-            
-            container.innerHTML = '';
-            
-            currentProject.sections.forEach((section, sectionIndex) => {
-                const sectionElement = document.createElement('div');
-                sectionElement.className = `section-editor ${section.isHeader ? 'header-section' : ''}`;
-                sectionElement.dataset.id = section.id;
-                
-                let contentHtml = '';
-                section.content.forEach((content, contentIndex) => {
-                    if (content.type === 'text') {
-                        contentHtml += `
-                            <div class="content-block" data-content-id="${content.id || createUniqueId()}">
-                                <div class="content-block-header">
-                                    <div class="content-block-title">📝 Text Block ${contentIndex + 1}</div>
-                                    <div class="content-block-controls">
-                                        <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'up')" ${contentIndex === 0 ? 'disabled' : ''}>↑</button>
-                                        <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'down')" ${contentIndex === section.content.length - 1 ? 'disabled' : ''}>↓</button>
-                                        <button class="icon-btn danger" onclick="deleteContent(${sectionIndex}, ${contentIndex})">🗑</button>
-                                    </div>
-                                </div>
-                                <div class="html-toggle">
-                                    <input type="checkbox" id="html-${sectionIndex}-${contentIndex}" ${content.allowHtml ? 'checked' : ''} 
-                                           onchange="toggleHtml(${sectionIndex}, ${contentIndex}, this.checked)">
-                                    <label for="html-${sectionIndex}-${contentIndex}">⚠️ Enable HTML (Advanced)</label>
-                                </div>
-                                <div class="rich-editor">
-                                    <div class="editor-toolbar" id="toolbar-${sectionIndex}-${contentIndex}">
-                                        <button class="toolbar-btn" onclick="formatText('bold', ${sectionIndex}, ${contentIndex})" title="Bold"><b>B</b></button>
-                                        <button class="toolbar-btn" onclick="formatText('italic', ${sectionIndex}, ${contentIndex})" title="Italic"><i>I</i></button>
-                                        <button class="toolbar-btn" onclick="formatText('underline', ${sectionIndex}, ${contentIndex})" title="Underline"><u>U</u></button>
-                                        <div class="toolbar-separator"></div>
-                                        <button class="toolbar-btn" onclick="formatText('insertUnorderedList', ${sectionIndex}, ${contentIndex})" title="Bullet List">•</button>
-                                        <button class="toolbar-btn" onclick="formatText('insertOrderedList', ${sectionIndex}, ${contentIndex})" title="Numbered List">1.</button>
-                                        <div class="toolbar-separator"></div>
-                                        <button class="toolbar-btn" onclick="formatText('superscript', ${sectionIndex}, ${contentIndex})" title="Superscript">X²</button>
-                                        <button class="toolbar-btn" onclick="formatText('subscript', ${sectionIndex}, ${contentIndex})" title="Subscript">X₂</button>
-                                        <div class="toolbar-separator"></div>
-                                        <button class="toolbar-btn" onclick="insertLink(${sectionIndex}, ${contentIndex})" title="Insert Link">🔗</button>
-                                        <div class="toolbar-separator"></div>
-                                        <select class="toolbar-select" onchange="formatText('fontSize', ${sectionIndex}, ${contentIndex}, this.value)">
-                                            <option value="">Size</option>
-                                            <option value="1">Small</option>
-                                            <option value="3">Normal</option>
-                                            <option value="5">Large</option>
-                                            <option value="7">X-Large</option>
-                                        </select>
-                                    </div>
-                                    <div class="editor-content-area" 
-                                         contenteditable="true" 
-                                         id="editor-${sectionIndex}-${contentIndex}"
-                                         onblur="updateContentValue(${sectionIndex}, ${contentIndex}, this.innerHTML)">${content.value}</div>
-                                </div>
-                            </div>
-                        `;
-                    } else if (content.type === 'image') {
-                        contentHtml += `
-                            <div class="content-block" data-content-id="${content.id || createUniqueId()}">
-                                <div class="content-block-header">
-                                    <div class="content-block-title">🖼️ Image Block ${contentIndex + 1}</div>
-                                    <div class="content-block-controls">
-                                        <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'up')" ${contentIndex === 0 ? 'disabled' : ''}>↑</button>
-                                        <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'down')" ${contentIndex === section.content.length - 1 ? 'disabled' : ''}>↓</button>
-                                        <button class="icon-btn danger" onclick="deleteContent(${sectionIndex}, ${contentIndex})">🗑</button>
-                                    </div>
-                                </div>
-                                <div class="image-container">
-                                    ${content.url ? 
-                                        `<img src="${content.url}" class="image-preview" alt="Section image">` :
-                                        `<div class="image-upload-area" onclick="document.getElementById('img-${sectionIndex}-${contentIndex}').click()">
-                                            <div>📷 Click to upload image</div>
-                                        </div>`
-                                    }
-                                    <input type="file" id="img-${sectionIndex}-${contentIndex}" accept="image/*" 
-                                           onchange="handleImageUpload(${sectionIndex}, ${contentIndex}, event)">
-                                    <div class="image-caption-container">
-                                        <label class="image-caption-label">Caption:</label>
-                                        <div class="rich-editor">
-                                            <div class="editor-toolbar">
-                                                <button class="toolbar-btn" onclick="formatCaption('bold', ${sectionIndex}, ${contentIndex})" title="Bold"><b>B</b></button>
-                                                <button class="toolbar-btn" onclick="formatCaption('italic', ${sectionIndex}, ${contentIndex})" title="Italic"><i>I</i></button>
-                                                <button class="toolbar-btn" onclick="formatCaption('underline', ${sectionIndex}, ${contentIndex})" title="Underline"><u>U</u></button>
-                                                <button class="toolbar-btn" onclick="formatCaption('superscript', ${sectionIndex}, ${contentIndex})" title="Superscript">X²</button>
-                                                <button class="toolbar-btn" onclick="insertCaptionLink(${sectionIndex}, ${contentIndex})" title="Insert Link">🔗</button>
-                                            </div>
-                                            <div class="editor-content-area" 
-                                                 contenteditable="true" 
-                                                 id="caption-${sectionIndex}-${contentIndex}"
-                                                 style="min-height: 60px;"
-                                                 onblur="updateImageCaption(${sectionIndex}, ${contentIndex}, this.innerHTML)">${content.caption || 'Enter caption here...'}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-                
-                sectionElement.innerHTML = `
-                    <div class="section-header" onclick="toggleSection('${section.id}')">
-                        <div class="section-title-group">
-                            <span class="section-icon">${section.icon}</span>
-                            <span class="section-name">${section.name}</span>
-                            <span class="expand-indicator">▼</span>
-                        </div>
-                        <div class="section-controls">
-                            <button class="icon-btn" onclick="event.stopPropagation(); moveSection(${sectionIndex}, 'up')" ${sectionIndex === 0 ? 'disabled' : ''}>↑</button>
-                            <button class="icon-btn" onclick="event.stopPropagation(); moveSection(${sectionIndex}, 'down')" ${sectionIndex === currentProject.sections.length - 1 ? 'disabled' : ''}>↓</button>
-                            <button class="icon-btn danger" onclick="event.stopPropagation(); deleteSection(${sectionIndex})">🗑</button>
-                        </div>
-                    </div>
-                    <div class="section-content" id="section-${section.id}">
-                        <div class="form-group">
-                            <label class="form-label">Section Name</label>
-                            <input type="text" class="form-input" value="${section.name}" onchange="updateSectionName(${sectionIndex}, this.value)">
-                        </div>
-                        
-                        ${contentHtml}
-                        
-                        <div class="add-content-container">
-                            <button class="btn btn-small btn-secondary" onclick="addTextToSection(${sectionIndex})">
-                                + Add Text
-                            </button>
-                            <button class="btn btn-small btn-secondary" onclick="addImageToSection(${sectionIndex})">
-                                + Add Image
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                container.appendChild(sectionElement);
-                
-                // Restore expanded state
-                if (expandedStates[section.id]) {
-                    const sectionContent = document.getElementById(`section-${section.id}`);
-                    if (sectionContent) {
-                        sectionContent.classList.add('expanded');
-                        // Update indicator rotation
-                        const indicator = sectionElement.querySelector('.expand-indicator');
-                        if (indicator) {
-                            indicator.style.transform = 'rotate(180deg)';
-                        }
-                    }
-                }
-            });
-        }
-
-        // Toggle section expansion
-        function toggleSection(sectionId) {
-            const content = document.getElementById(`section-${sectionId}`);
-            const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
-            const indicator = section.querySelector('.expand-indicator');
-            
-            content.classList.toggle('expanded');
-            
-            // Update indicator rotation
-            if (content.classList.contains('expanded')) {
-                indicator.style.transform = 'rotate(180deg)';
-            } else {
-                indicator.style.transform = 'rotate(0deg)';
-            }
-        }
-
-        // Add new section
-        function addSection() {
-            const newSection = {
-                id: `section-${Date.now()}`,
-                icon: '📝',
-                name: 'New Section',
-                content: [{ type: 'text', value: '', allowHtml: false }]
-            };
-            currentProject.sections.push(newSection);
-            
-            // Mark the new section to be expanded
-            renderSections();
-            
-            // Auto-expand the new section
-            const newSectionContent = document.getElementById(`section-${newSection.id}`);
-            if (newSectionContent) {
-                newSectionContent.classList.add('expanded');
-                // Update indicator rotation
-                const section = document.querySelector(`.section-editor[data-id="${newSection.id}"]`);
-                const indicator = section.querySelector('.expand-indicator');
-                if (indicator) {
-                    indicator.style.transform = 'rotate(180deg)';
-                }
-                // Scroll to the new section
-                newSectionContent.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            
-            updatePreview();
-            showToast('Section added', 'success');
-        }
-
-        // Delete section
-        function deleteSection(index) {
-            if (confirm('Are you sure you want to delete this section?')) {
-                // Store all expanded states except for the deleted section
-                const expandedStates = {};
-                currentProject.sections.forEach((section, i) => {
-                    if (i !== index) {
-                        const sectionContent = document.getElementById(`section-${section.id}`);
-                        if (sectionContent) {
-                            expandedStates[section.id] = sectionContent.classList.contains('expanded');
-                        }
-                    }
-                });
-                
-                currentProject.sections.splice(index, 1);
-                renderSections();
-                
-                // Restore expanded states
-                Object.keys(expandedStates).forEach(sectionId => {
-                    if (expandedStates[sectionId]) {
-                        const sectionContent = document.getElementById(`section-${sectionId}`);
-                        if (sectionContent) {
-                            sectionContent.classList.add('expanded');
-                            const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
-                            const indicator = section.querySelector('.expand-indicator');
-                            if (indicator) {
-                                indicator.style.transform = 'rotate(180deg)';
-                            }
-                        }
-                    }
-                });
-                
-                updatePreview();
-                showToast('Section deleted', 'success');
-            }
-        }
-
-        // Move section
-        function moveSection(index, direction) {
-            // Store all expanded states before moving
-            const expandedStates = {};
-            currentProject.sections.forEach(section => {
-                const sectionContent = document.getElementById(`section-${section.id}`);
-                if (sectionContent) {
-                    expandedStates[section.id] = sectionContent.classList.contains('expanded');
-                }
-            });
-            
-            const sections = currentProject.sections;
-            if (direction === 'up' && index > 0) {
-                [sections[index], sections[index - 1]] = [sections[index - 1], sections[index]];
-            } else if (direction === 'down' && index < sections.length - 1) {
-                [sections[index], sections[index + 1]] = [sections[index + 1], sections[index]];
-            }
-            
-            renderSections();
-            
-            // Restore all expanded states
-            Object.keys(expandedStates).forEach(sectionId => {
-                if (expandedStates[sectionId]) {
-                    const sectionContent = document.getElementById(`section-${sectionId}`);
-                    if (sectionContent) {
-                        sectionContent.classList.add('expanded');
-                        const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
-                        const indicator = section.querySelector('.expand-indicator');
-                        if (indicator) {
-                            indicator.style.transform = 'rotate(180deg)';
-                        }
-                    }
-                }
-            });
-            
-            updatePreview();
-        }
-
-        // Update section name
-        function updateSectionName(index, value) {
-            currentProject.sections[index].name = value;
-            const sectionHeader = document.querySelector(`.section-editor[data-id="${currentProject.sections[index].id}"] .section-name`);
-            if (sectionHeader) {
-                sectionHeader.textContent = value;
-            }
-            updatePreview();
-        }
-
-        // Add text to section
-        function addTextToSection(sectionIndex) {
-            currentProject.sections[sectionIndex].content.push({
-                type: 'text',
-                value: 'New text content...',
-                allowHtml: false
-            });
-            
-            // Store expanded state of this section
-            const sectionId = currentProject.sections[sectionIndex].id;
-            const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
-            
-            renderSections();
-            
-            // Keep section expanded
-            if (wasExpanded || true) { // Always keep expanded when adding content
-                document.getElementById(`section-${sectionId}`).classList.add('expanded');
-                const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
-                const indicator = section.querySelector('.expand-indicator');
-                if (indicator) {
-                    indicator.style.transform = 'rotate(180deg)';
-                }
-            }
-            
-            updatePreview();
-        }
-
-        // Add image to section
-        function addImageToSection(sectionIndex) {
-            currentProject.sections[sectionIndex].content.push({
-                type: 'image',
-                url: null,
-                caption: 'Image caption...'
-            });
-            
-            // Store expanded state of this section
-            const sectionId = currentProject.sections[sectionIndex].id;
-            const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
-            
-            renderSections();
-            
-            // Keep section expanded
-            if (wasExpanded || true) { // Always keep expanded when adding content
-                document.getElementById(`section-${sectionId}`).classList.add('expanded');
-                const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
-                const indicator = section.querySelector('.expand-indicator');
-                if (indicator) {
-                    indicator.style.transform = 'rotate(180deg)';
-                }
-            }
-            
-            updatePreview();
-        }
-
-        // Delete content
-        function deleteContent(sectionIndex, contentIndex) {
-            if (currentProject.sections[sectionIndex].content.length > 1) {
-                const sectionId = currentProject.sections[sectionIndex].id;
-                const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
-                
-                currentProject.sections[sectionIndex].content.splice(contentIndex, 1);
-                renderSections();
-                
-                // Restore expanded state
-                if (wasExpanded) {
-                    document.getElementById(`section-${sectionId}`).classList.add('expanded');
-                    const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
-                    const indicator = section.querySelector('.expand-indicator');
-                    if (indicator) {
-                        indicator.style.transform = 'rotate(180deg)';
-                    }
-                }
-                
-                updatePreview();
-            } else {
-                showToast('Cannot delete the last content block', 'error');
-            }
-        }
-
-        // Move content
-        function moveContent(sectionIndex, contentIndex, direction) {
-            const sectionId = currentProject.sections[sectionIndex].id;
-            const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
-            
-            const content = currentProject.sections[sectionIndex].content;
-            if (direction === 'up' && contentIndex > 0) {
-                [content[contentIndex], content[contentIndex - 1]] = [content[contentIndex - 1], content[contentIndex]];
-            } else if (direction === 'down' && contentIndex < content.length - 1) {
-                [content[contentIndex], content[contentIndex + 1]] = [content[contentIndex + 1], content[contentIndex]];
-            }
-            
-            renderSections();
-            
-            // Restore expanded state
-            if (wasExpanded) {
-                document.getElementById(`section-${sectionId}`).classList.add('expanded');
-                const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
-                const indicator = section.querySelector('.expand-indicator');
-                if (indicator) {
-                    indicator.style.transform = 'rotate(180deg)';
-                }
-            }
-            
-            updatePreview();
-        }
-
-        // Update content value
-        function updateContentValue(sectionIndex, contentIndex, value) {
-            currentProject.sections[sectionIndex].content[contentIndex].value = value;
-            // Just update preview without re-rendering sections
-            updatePreview();
-        }
-
-        // Toggle HTML
-        function toggleHtml(sectionIndex, contentIndex, enabled) {
-            currentProject.sections[sectionIndex].content[contentIndex].allowHtml = enabled;
-            if (enabled) {
-                showToast('⚠️ HTML enabled - Be careful with external content', 'error');
-            }
-            // Just update preview without re-rendering sections
-            updatePreview();
-        }
-
-        // Format text
-        function formatText(command, sectionIndex, contentIndex, value = null) {
-            const editor = document.getElementById(`editor-${sectionIndex}-${contentIndex}`);
-            editor.focus();
-            document.execCommand(command, false, value);
-            // Update the stored value without re-rendering
-            currentProject.sections[sectionIndex].content[contentIndex].value = editor.innerHTML;
-            updatePreview();
-        }
-
-        // Insert link
-        function insertLink(sectionIndex, contentIndex) {
-            const editor = document.getElementById(`editor-${sectionIndex}-${contentIndex}`);
-            const selection = window.getSelection();
-            const selectedText = selection.toString();
-            
-            const url = prompt('Enter URL:', 'https://');
-            if (url && url !== 'https://') {
-                editor.focus();
-                if (selectedText) {
-                    document.execCommand('createLink', false, url);
-                } else {
-                    const linkText = prompt('Enter link text:', 'Link');
-                    if (linkText) {
-                        document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${linkText}</a>`);
-                    }
-                }
-                currentProject.sections[sectionIndex].content[contentIndex].value = editor.innerHTML;
-                updatePreview();
-            }
-        }
-
-        // Format caption
-        function formatCaption(command, sectionIndex, contentIndex) {
-            const caption = document.getElementById(`caption-${sectionIndex}-${contentIndex}`);
-            caption.focus();
-            document.execCommand(command, false, null);
-            // Update the stored value without re-rendering
-            currentProject.sections[sectionIndex].content[contentIndex].caption = caption.innerHTML;
-            updatePreview();
-        }
-
-        // Insert link in caption
-        function insertCaptionLink(sectionIndex, contentIndex) {
-            const caption = document.getElementById(`caption-${sectionIndex}-${contentIndex}`);
-            const selection = window.getSelection();
-            const selectedText = selection.toString();
-            
-            const url = prompt('Enter URL:', 'https://');
-            if (url && url !== 'https://') {
-                caption.focus();
-                if (selectedText) {
-                    document.execCommand('createLink', false, url);
-                } else {
-                    const linkText = prompt('Enter link text:', 'Link');
-                    if (linkText) {
-                        document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${linkText}</a>`);
-                    }
-                }
-                currentProject.sections[sectionIndex].content[contentIndex].caption = caption.innerHTML;
-                updatePreview();
-            }
-        }
-
-        // Handle image upload
-        function handleImageUpload(sectionIndex, contentIndex, event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const sectionId = currentProject.sections[sectionIndex].id;
-                    const wasExpanded = document.getElementById(`section-${sectionId}`).classList.contains('expanded');
-                    
-                    currentProject.sections[sectionIndex].content[contentIndex].url = e.target.result;
-                    renderSections();
-                    
-                    // Restore expanded state
-                    if (wasExpanded) {
-                        document.getElementById(`section-${sectionId}`).classList.add('expanded');
-                        const section = document.querySelector(`.section-editor[data-id="${sectionId}"]`);
-                        const indicator = section.querySelector('.expand-indicator');
-                        if (indicator) {
-                            indicator.style.transform = 'rotate(180deg)';
-                        }
-                    }
-                    
-                    updatePreview();
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // Update image caption
-        function updateImageCaption(sectionIndex, contentIndex, caption) {
-            currentProject.sections[sectionIndex].content[contentIndex].caption = caption;
-            // Just update preview without re-rendering sections
-            updatePreview();
-        }
-
-        // Handle logo upload
-        function handleLogoUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentProject.logoUrl = e.target.result;
-                    document.getElementById('logoPreview').innerHTML = `
-                        <img src="${e.target.result}" style="max-width: 200px; margin-top: 10px; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px; background: white;">
-                        <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">Logo uploaded successfully! Use the size slider above to adjust.</p>
-                    `;
-                    updatePreview();
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // Switch tabs
-        function switchTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.tab').forEach(tab => {
-                if (tab.dataset.tab === tabName) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-            
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`${tabName}Tab`).classList.add('active');
-        }
-
-        // Update preview
-        function updatePreview() {
-            const preview = document.getElementById('websitePreview');
-            
-            // Save scroll position
-            let scrollPos = 0;
-            try {
-                if (preview.contentWindow && preview.contentWindow.document) {
-                    scrollPos = preview.contentWindow.pageYOffset || preview.contentWindow.document.documentElement.scrollTop || 0;
-                }
-            } catch (e) {
-                // Handle cross-origin issues
-            }
-            
-            const primaryColor = document.getElementById('primaryColor').value;
-            const secondaryColor = document.getElementById('secondaryColor').value;
-            const layoutStyle = document.getElementById('layoutStyle').value;
-            const titleSize = document.getElementById('titleSize').value;
-            const contentSize = document.getElementById('contentSize').value;
-            const fontStyle = document.getElementById('fontStyle').value;
-            const headerAlignment = document.getElementById('headerAlignment')?.value || 'center';
-            const logoSize = document.getElementById('logoSize')?.value || '120';
-            
-            const fontFamily = fontStyle === 'serif' ? 'Georgia, serif' : 
-                             fontStyle === 'mono' ? 'monospace' : 
-                             '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-            
-            const navHtml = layoutStyle === 'sections' ? `
-                <nav style="position: sticky; top: 0; background: white; border-bottom: 1px solid #e5e7eb; padding: 16px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="max-width: 1200px; margin: 0 auto; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
-                        ${currentProject.sections.map(section => 
-                            `<a href="#${section.id}" style="color: ${primaryColor}; text-decoration: none; font-weight: 500;">${section.icon} ${section.name}</a>`
-                        ).join('')}
-                        <button onclick="alert('PDF download would be triggered here')" style="margin-left: auto; background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); color: white; padding: 8px 16px; border-radius: 25px; border: none; cursor: pointer; font-weight: 600;">📄 Download PDF</button>
-                    </div>
-                </nav>
-            ` : layoutStyle === 'menu' ? `
-                <div id="hamburgerMenu" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
-                    <button onclick="toggleMenu()" style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="width: 24px; height: 2px; background: ${primaryColor}; margin: 4px 0;"></div>
-                        <div style="width: 24px; height: 2px; background: ${primaryColor}; margin: 4px 0;"></div>
-                        <div style="width: 24px; height: 2px; background: ${primaryColor}; margin: 4px 0;"></div>
-                    </button>
-                    <div id="menuDropdown" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-top: 8px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); min-width: 200px;">
-                        ${currentProject.sections.map(section => 
-                            `<a href="#${section.id}" onclick="toggleMenu()" style="display: block; padding: 8px 12px; color: ${primaryColor}; text-decoration: none; font-weight: 500; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='transparent'">${section.icon} ${section.name}</a>`
-                        ).join('')}
-                        <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
-                        <button onclick="alert('PDF download would be triggered here')" style="width: 100%; background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); color: white; padding: 8px 16px; border-radius: 25px; border: none; cursor: pointer; font-weight: 600;">📄 Download PDF</button>
-                    </div>
-                </div>
-                <script>
-                    function toggleMenu() {
-                        const dropdown = document.getElementById('menuDropdown');
-                        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-                    }
-                    // Close menu when clicking outside
-                    document.addEventListener('click', function(event) {
-                        const menu = document.getElementById('hamburgerMenu');
-                        if (!menu.contains(event.target)) {
-                            document.getElementById('menuDropdown').style.display = 'none';
-                        }
-                    });
-                </scr"+"ipt>
-            ` : '';
-            
-            const previewHtml = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <style>
-                        body {
-                            font-family: ${fontFamily};
-                            margin: 0;
-                            padding: 0;
-                            background: #f8fafc;
-                            font-size: ${contentSize}px;
-                        }
-                        .container {
-                            max-width: 1200px;
-                            margin: 0 auto;
-                            padding: 20px;
-                        }
-                        .header {
-                            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
-                            color: white;
-                            padding: 60px 40px;
-                            border-radius: 16px;
-                            margin-bottom: 30px;
-                            text-align: ${headerAlignment};
-                            position: relative;
-                        }
-                        .logo {
-                            max-width: ${logoSize}px;
-                            max-height: ${logoSize}px;
-                            margin-bottom: 20px;
-                            background: white;
-                            padding: 12px;
-                            border-radius: 12px;
-                            display: inline-block;
-                        }
-                        h1 { 
-                            margin: 0 0 10px 0; 
-                            font-size: ${titleSize}px;
-                        }
-                        .section {
-                            background: white;
-                            padding: 30px;
-                            margin-bottom: 20px;
-                            border-radius: 12px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                            scroll-margin-top: ${layoutStyle === 'sections' ? '80px' : '20px'};
-                        }
-                        .section h2 {
-                            color: ${primaryColor};
-                            margin-top: 0;
-                            font-size: ${Math.round(titleSize * 0.75)}px;
-                        }
-                        .content-block {
-                            margin-bottom: 20px;
-                        }
-                        .content-block a {
-                            color: ${primaryColor};
-                            text-decoration: underline;
-                        }
-                        .content-block a:hover {
-                            color: ${secondaryColor};
-                        }
-                        .image-block {
-                            text-align: center;
-                            margin: 20px 0;
-                        }
-                        .image-block img {
-                            max-width: 100%;
-                            height: auto;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                        }
-                        .image-caption {
-                            margin-top: 12px;
-                            font-style: italic;
-                            color: #666;
-                            font-size: ${Math.round(contentSize * 0.9)}px;
-                        }
-                        .image-caption a {
-                            color: ${primaryColor};
-                            text-decoration: underline;
-                        }
-                        .image-caption a:hover {
-                            color: ${secondaryColor};
-                        }
-                        .pdf-download {
-                            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
-                            color: white;
-                            padding: 16px 32px;
-                            border-radius: 50px;
-                            font-weight: 600;
-                            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-                            border: none;
-                            cursor: pointer;
-                            font-size: 16px;
-                            display: inline-block;
-                            margin: 40px auto 20px;
-                        }
-                        .pdf-download:hover {
-                            transform: translateY(-2px);
-                            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-                        }
-                        .pdf-download-container {
-                            text-align: center;
-                            padding: 20px;
-                            background: white;
-                            margin-top: 40px;
-                            border-radius: 12px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${navHtml}
-                    <div class="container">
-                        ${currentProject.sections.map(section => {
-                            if (section.isHeader) {
-                                return `
-                                    <div class="header" id="${section.id}">
-                                        ${currentProject.logoUrl ? `<div><img src="${currentProject.logoUrl}" class="logo" alt="Logo"></div>` : ''}
-                                        ${section.content.map(content => {
-                                            if (content.type === 'text') {
-                                                return content.allowHtml ? content.value : `<div>${content.value}</div>`;
-                                            }
-                                            return '';
-                                        }).join('')}
-                                    </div>
-                                `;
-                            } else {
-                                return `
-                                    <div class="section" id="${section.id}">
-                                        <h2>${section.icon} ${section.name}</h2>
-                                        ${section.content.map(content => {
-                                            if (content.type === 'text') {
-                                                return `<div class="content-block">${content.allowHtml ? content.value : content.value}</div>`;
-                                            } else if (content.type === 'image' && content.url) {
-                                                return `
-                                                    <div class="image-block">
-                                                        <img src="${content.url}" alt="${section.name} image">
-                                                        ${content.caption ? `<div class="image-caption">${content.caption}</div>` : ''}
-                                                    </div>
-                                                `;
-                                            }
-                                            return '';
-                                        }).join('')}
-                                    </div>
-                                `;
-                            }
-                        }).join('')}
-                    </div>
-                    ${layoutStyle === 'single' ? `
-                        <div class="pdf-download-container">
-                            <button class="pdf-download" onclick="alert('PDF download would be triggered here')">
-                                📄 Download PDF
-                            </button>
-                        </div>
-                    ` : ''}
-                </body>
-                </html>
-            `;
-            
-            preview.srcdoc = previewHtml;
-            
-            // Restore scroll position after content loads
-            preview.onload = function() {
-                if (scrollPos > 0) {
-                    setTimeout(() => {
-                        try {
-                            preview.contentWindow.scrollTo(0, scrollPos);
-                        } catch (e) {
-                            // Handle cross-origin issues
-                        }
-                    }, 100);
-                }
-            };
-        }
-
-        // Update color scheme
-        function updateColorScheme() {
-            const scheme = document.getElementById('colorScheme').value;
-            const schemes = {
-                clinical: { primary: '#0ea5e9', secondary: '#0284c7' },
-                research: { primary: '#16a34a', secondary: '#15803d' },
-                pharma: { primary: '#9333ea', secondary: '#7c3aed' },
-                modern: { primary: '#14b8a6', secondary: '#0d9488' },
-                academic: { primary: '#dc2626', secondary: '#b91c1c' }
-            };
-            
-            if (schemes[scheme]) {
-                document.getElementById('primaryColor').value = schemes[scheme].primary;
-                document.getElementById('primaryColorHex').value = schemes[scheme].primary;
-                document.getElementById('secondaryColor').value = schemes[scheme].secondary;
-                document.getElementById('secondaryColorHex').value = schemes[scheme].secondary;
-                updatePreview();
-            }
-        }
-
-        // Update title size
-        function updateTitleSize() {
-            const size = document.getElementById('titleSize').value;
-            document.getElementById('titleSizeValue').textContent = `${size}px`;
-            updatePreview();
-        }
-
-        // Update content size
-        function updateContentSize() {
-            const size = document.getElementById('contentSize').value;
-            document.getElementById('contentSizeValue').textContent = `${size}px`;
-            updatePreview();
-        }
-
-        // Update logo size
-        function updateLogoSize() {
-            const size = document.getElementById('logoSize').value;
-            document.getElementById('logoSizeValue').textContent = `${size}px`;
-            updatePreview();
-        }
-
-        // Show preview modal and preserve scroll position
-        function showPreviewModal() {
-            const preview = document.getElementById('websitePreview');
-            const fullPreview = document.getElementById('fullPreview');
-            
-            // Copy the current preview HTML
-            fullPreview.srcdoc = preview.srcdoc;
-            
-            // Show modal
-            document.getElementById('previewModal').classList.add('active');
-            
-            // Preserve scroll position when modal preview loads
-            fullPreview.onload = function() {
-                try {
-                    const scrollPos = preview.contentWindow.pageYOffset || preview.contentWindow.document.documentElement.scrollTop || 0;
-                    if (scrollPos > 0) {
-                        setTimeout(() => {
-                            fullPreview.contentWindow.scrollTo(0, scrollPos);
-                        }, 100);
-                    }
-                } catch (e) {
-                    // Handle cross-origin issues
-                }
-            };
-        }
-
-        function closePreviewModal() {
-            const fullPreview = document.getElementById('fullPreview');
-            const preview = document.getElementById('websitePreview');
-            
-            // Try to sync scroll positions back
-            try {
-                const modalScrollPos = fullPreview.contentWindow.pageYOffset || fullPreview.contentWindow.document.documentElement.scrollTop || 0;
-                if (modalScrollPos > 0) {
-                    setTimeout(() => {
-                        preview.contentWindow.scrollTo(0, modalScrollPos);
-                    }, 100);
-                }
-            } catch (e) {
-                // Handle cross-origin issues
-            }
-            
-            document.getElementById('previewModal').classList.remove('active');
-        }
-
-        function exportWebsite() {
-            document.getElementById('exportModal').classList.add('active');
-        }
-
-        function closeExportModal() {
-            document.getElementById('exportModal').classList.remove('active');
-        }
-
-        function setPreviewDevice(device) {
-            const frame = document.getElementById('previewFrame');
-            frame.className = `preview-frame ${device}`;
-            
-            // Update button states
-            document.querySelectorAll('.modal-header .btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(`${device.replace('-h', 'H').replace('-v', 'V')}Btn`).classList.add('active');
-        }
-
-        function downloadWebsite() {
-            const format = document.querySelector('input[name="exportFormat"]:checked').value;
-            showToast(`Generating ${format.toUpperCase()} file`, 'success');
-            
-            let content = '';
-            let filename = '';
-            
-            if (format === 'html') {
-                content = generateHTMLExport();
-                filename = 'poster-website.html';
-            } else if (format === 'react') {
-                content = generateReactExport();
-                filename = 'PosterWebsite.jsx';
-            } else if (format === 'nextjs') {
-                content = generateNextJSExport();
-                filename = 'poster.js';
-            }
-            
-            // Create blob and download
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-            
-            closeExportModal();
-            setTimeout(() => {
-                showToast('Download complete!', 'success');
-            }, 500);
-        }
-        
-        // Generate HTML export
-        function generateHTMLExport() {
-            const primaryColor = document.getElementById('primaryColor').value;
-            const secondaryColor = document.getElementById('secondaryColor').value;
-            const layoutStyle = document.getElementById('layoutStyle').value;
-            const titleSize = document.getElementById('titleSize').value;
-            const contentSize = document.getElementById('contentSize').value;
-            const fontStyle = document.getElementById('fontStyle').value;
-            const headerAlignment = document.getElementById('headerAlignment')?.value || 'center';
-            const logoSize = document.getElementById('logoSize')?.value || '120';
-            
-            const fontFamily = fontStyle === 'serif' ? 'Georgia, serif' : 
-                             fontStyle === 'mono' ? 'monospace' : 
-                             '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-            
-            const navHtml = layoutStyle === 'sections' ? `
-    <nav>
-        <div class="nav-container">
-            ${currentProject.sections.map(section => 
-                `<a href="#${section.id}">${section.icon} ${section.name}</a>`
-            ).join('')}
-            <button class="pdf-download" style="margin-left: auto;" onclick="window.print()">📄 Download PDF</button>
-        </div>
-    </nav>` : layoutStyle === 'menu' ? `
-    <div id="hamburgerMenu">
-        <button onclick="toggleMenu()">
-            <div class="menu-line"></div>
-            <div class="menu-line"></div>
-            <div class="menu-line"></div>
-        </button>
-        <div id="menuDropdown">
-            ${currentProject.sections.map(section => 
-                `<a href="#${section.id}" onclick="toggleMenu()">${section.icon} ${section.name}</a>`
-            ).join('')}
-            <hr>
-            <button class="pdf-download" onclick="window.print()">📄 Download PDF</button>
-        </div>
-    </div>
-    <script>
-        function toggleMenu() {
-            const dropdown = document.getElementById('menuDropdown');
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        }
-        document.addEventListener('click', function(event) {
-            const menu = document.getElementById('hamburgerMenu');
-            if (!menu.contains(event.target)) {
-                document.getElementById('menuDropdown').style.display = 'none';
-            }
-        });
-    <\/script>` : '';
-            
-            return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${currentProject.title}</title>
-    <style>
-        body {
-            font-family: ${fontFamily};
-            margin: 0;
-            padding: 0;
-            background: #f8fafc;
-            font-size: ${contentSize}px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
-            color: white;
-            padding: 60px 40px;
-            border-radius: 16px;
-            margin-bottom: 30px;
-            text-align: ${headerAlignment};
-            position: relative;
-        }
-        .logo {
-            max-width: ${logoSize}px;
-            max-height: ${logoSize}px;
-            margin-bottom: 20px;
-            background: white;
-            padding: 12px;
-            border-radius: 12px;
-            display: inline-block;
-        }
-        h1 { 
-            margin: 0 0 10px 0; 
-            font-size: ${titleSize}px;
-        }
-        .section {
-            background: white;
-            padding: 30px;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            scroll-margin-top: ${layoutStyle === 'sections' ? '80px' : '20px'};
-        }
-        .section h2 {
-            color: ${primaryColor};
-            margin-top: 0;
-            font-size: ${Math.round(titleSize * 0.75)}px;
-        }
-        .content-block {
-            margin-bottom: 20px;
-        }
-        .content-block a {
-            color: ${primaryColor};
-            text-decoration: underline;
-        }
-        .content-block a:hover {
-            color: ${secondaryColor};
-        }
-        .image-block {
-            text-align: center;
-            margin: 20px 0;
-        }
-        .image-block img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .image-caption {
-            margin-top: 12px;
-            font-style: italic;
-            color: #666;
-            font-size: ${Math.round(contentSize * 0.9)}px;
-        }
-        .image-caption a {
-            color: ${primaryColor};
-        }
-        nav {
-            position: sticky;
-            top: 0;
-            background: white;
-            border-bottom: 1px solid #e5e7eb;
-            padding: 16px;
-            z-index: 100;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        nav .nav-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        nav a {
-            color: ${primaryColor};
-            text-decoration: none;
-            font-weight: 500;
-        }
-        nav a:hover {
-            text-decoration: underline;
-        }
-        #hamburgerMenu {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-        #hamburgerMenu button {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 10px;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .menu-line {
-            width: 24px;
-            height: 2px;
-            background: ${primaryColor};
-            margin: 4px 0;
-        }
-        #menuDropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            margin-top: 8px;
-            padding: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            min-width: 200px;
-        }
-        #menuDropdown a {
-            display: block;
-            padding: 8px 12px;
-            color: ${primaryColor};
-            text-decoration: none;
-            font-weight: 500;
-            border-radius: 8px;
-            transition: background 0.2s;
-        }
-        #menuDropdown a:hover {
-            background: #f0fdf4;
-        }
-        #menuDropdown hr {
-            margin: 12px 0;
-            border: none;
-            border-top: 1px solid #e5e7eb;
-        }
-        .pdf-download {
-            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
-            color: white;
-            padding: 16px 32px;
-            border-radius: 50px;
-            font-weight: 600;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            display: inline-block;
-            margin: 40px auto 20px;
-        }
-        #menuDropdown .pdf-download {
-            width: 100%;
-            margin: 0;
-            font-size: 14px;
-            padding: 10px 16px;
-        }
-        .pdf-download:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-        .pdf-download-container {
-            text-align: center;
-            padding: 20px;
-            background: white;
-            margin-top: 40px;
-            border-radius: 12px;
-        }
-        @media print {
-            nav, #hamburgerMenu, .pdf-download-container { display: none; }
-        }
-    </style>
-</head>
-<body>
-    ${navHtml}
-    
-    <div class="container">
-        ${currentProject.sections.map(section => {
-            if (section.isHeader) {
-                return `
-        <div class="header" id="${section.id}">
-            ${currentProject.logoUrl ? `<div><img src="${currentProject.logoUrl}" class="logo" alt="Logo"></div>` : ''}
-            ${section.content.map(content => {
-                if (content.type === 'text') {
-                    return content.allowHtml ? content.value : `<div>${content.value}</div>`;
-                }
-                return '';
-            }).join('')}
-        </div>`;
-            } else {
-                return `
-        <div class="section" id="${section.id}">
-            <h2>${section.icon} ${section.name}</h2>
-            ${section.content.map(content => {
-                if (content.type === 'text') {
-                    return `<div class="content-block">${content.value}</div>`;
-                } else if (content.type === 'image' && content.url) {
-                    return `
-            <div class="image-block">
-                <img src="${content.url}" alt="${section.name} image">
-                ${content.caption ? `<div class="image-caption">${content.caption}</div>` : ''}
-            </div>`;
-                }
-                return '';
-            }).join('')}
-        </div>`;
-            }
-        }).join('')}
-    </div>
-    
-    ${layoutStyle === 'single' ? `
-    <div class="pdf-download-container">
-        <button class="pdf-download" onclick="window.print()">📄 Download PDF</button>
-    </div>
-    ` : ''}
-</body>
-</html>`;
-        }
-        
-        // Generate React export
-        function generateReactExport() {
-            const primaryColor = document.getElementById('primaryColor').value;
-            const secondaryColor = document.getElementById('secondaryColor').value;
-            const headerAlignment = document.getElementById('headerAlignment')?.value || 'center';
-            const logoSize = document.getElementById('logoSize')?.value || '120';
-            const layoutStyle = document.getElementById('layoutStyle')?.value || 'single';
-            
-            return `import React, { useState } from 'react';
-import styled from 'styled-components';
-
-const Container = styled.div\`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #f8fafc;
-  min-height: 100vh;
-\`;
-
-const Header = styled.header\`
-  background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
-  color: white;
-  padding: 60px 40px;
-  border-radius: 16px;
-  margin-bottom: 30px;
-  text-align: ${headerAlignment};
-  position: relative;
-\`;
-
-const Logo = styled.img\`
-  max-width: ${logoSize}px;
-  max-height: ${logoSize}px;
-  margin-bottom: 20px;
-  background: white;
-  padding: 12px;
-  border-radius: 12px;
-  display: inline-block;
-\`;
-
-const Section = styled.section\`
-  background: white;
-  padding: 30px;
-  margin-bottom: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-\`;
-
-const HamburgerMenu = styled.div\`
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1000;
-\`;
-
-const PosterWebsite = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const sections = ${JSON.stringify(currentProject.sections, null, 2)};
-  const logoUrl = ${currentProject.logoUrl ? `"${currentProject.logoUrl}"` : 'null'};
-  
-  return (
-    <Container>
-      ${layoutStyle === 'menu' ? `
-      <HamburgerMenu>
-        <button onClick={() => setMenuOpen(!menuOpen)} style={{
-          background: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          padding: '10px',
-          cursor: 'pointer'
-        }}>
-          <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
-          <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
-          <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
-        </button>
-        {menuOpen && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            background: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '12px',
-            marginTop: '8px',
-            padding: '16px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-            min-width: '200px'
-          }}>
-            {sections.map((section) => (
-              <a
-                key={section.id}
-                href={\`#\${section.id}\`}
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  display: 'block',
-                  padding: '8px 12px',
-                  color: '${primaryColor}',
-                  textDecoration: 'none',
-                  fontWeight: 500
-                }}
-              >
-                {section.icon} {section.name}
-              </a>
-            ))}
-          </div>
-        )}
-      </HamburgerMenu>
-      ` : ''}
-      {sections.map((section) => {
-        if (section.isHeader) {
-          return (
-            <Header key={section.id} id={section.id}>
-              {logoUrl && <div><Logo src={logoUrl} alt="Logo" /></div>}
-              {section.content.map((content, idx) => (
-                <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />
-              ))}
-            </Header>
-          );
-        }
-        return (
-          <Section key={section.id} id={section.id}>
-            <h2 style={{ color: '${primaryColor}' }}>{section.icon} {section.name}</h2>
-            {section.content.map((content, idx) => {
-              if (content.type === 'text') {
-                return <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />;
-              }
-              if (content.type === 'image' && content.url) {
-                return (
-                  <div key={idx} style={{ textAlign: 'center', margin: '20px 0' }}>
-                    <img src={content.url} alt={section.name} style={{ maxWidth: '100%', borderRadius: '8px' }} />
-                    {content.caption && (
-                      <div style={{ fontStyle: 'italic', marginTop: '12px' }} dangerouslySetInnerHTML={{ __html: content.caption }} />
-                    )}
-                  </div>
-                );
-              }
-              return null;
-            })}
-          </Section>
-        );
-      })}
-    </Container>
-  );
-};
-
-export default PosterWebsite;`;
-        }
-        
-        // Generate Next.js export - COMPLETE FUNCTION
-        function generateNextJSExport() {
-            const primaryColor = document.getElementById('primaryColor').value;
-            const secondaryColor = document.getElementById('secondaryColor').value;
-            const headerAlignment = document.getElementById('headerAlignment')?.value || 'center';
-            const logoSize = document.getElementById('logoSize')?.value || '120';
-            const layoutStyle = document.getElementById('layoutStyle')?.value || 'single';
-            
-            return `import Head from 'next/head';
-import { useState } from 'react';
-
-export default function PosterPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const sections = ${JSON.stringify(currentProject.sections, null, 2)};
-  const logoUrl = ${currentProject.logoUrl ? `"${currentProject.logoUrl}"` : 'null'};
-  
-  return (
-    <>
-      <Head>
-        <title>${currentProject.title}</title>
-        <meta name="description" content="Research poster website" />
-      </Head>
-      
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', background: '#f8fafc', minHeight: '100vh' }}>
-        ${layoutStyle === 'menu' ? `
-        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            style={{
-              background: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              padding: '10px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}
-          >
-            <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
-            <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
-            <div style={{ width: '24px', height: '2px', background: '${primaryColor}', margin: '4px 0' }}></div>
-          </button>
-          {menuOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              background: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '12px',
-              marginTop: '8px',
-              padding: '16px',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-              minWidth: '200px'
-            }}>
-              {sections.map((section) => (
-                <a
-                  key={section.id}
-                  href={\`#\${section.id}\`}
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    display: 'block',
-                    padding: '8px 12px',
-                    color: '${primaryColor}',
-                    textDecoration: 'none',
-                    fontWeight: 500
-                  }}
-                >
-                  {section.icon} {section.name}
-                </a>
-              ))}
-              <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
-              <button
-                onClick={() => window.print()}
-                style={{
-                  width: '100%',
-                  background: \`linear-gradient(135deg, ${primaryColor}, ${secondaryColor})\`,
-                  color: 'white',
-                  padding: '10px 16px',
-                  borderRadius: '25px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 600
-                }}
-              >
-                📄 Download PDF
-              </button>
-            </div>
-          )}
-        </div>
-        ` : ''}
-        {sections.map((section) => {
-          if (section.isHeader) {
-            return (
-              <header
-                key={section.id}
-                id={section.id}
-                style={{
-                  background: \`linear-gradient(135deg, ${primaryColor}, ${secondaryColor})\`,
-                  color: 'white',
-                  padding: '60px 40px',
-                  borderRadius: '16px',
-                  marginBottom: '30px',
-                  textAlign: '${headerAlignment}',
-                  position: 'relative'
-                }}
-              >
-                {logoUrl && (
-                  <div>
-                    <img
-                      src={logoUrl}
-                      alt="Logo"
-                      style={{
-                        maxWidth: \`\${logoSize}px\`,
-                        maxHeight: \`\${logoSize}px\`,
-                        marginBottom: '20px',
-                        background: 'white',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        display: 'inline-block'
-                      }}
-                    />
-                  </div>
-                )}
-                {section.content.map((content, idx) => (
-                  <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />
-                ))}
-              </header>
-            );
-          }
-          return (
-            <section
-              key={section.id}
-              id={section.id}
-              style={{
-                background: 'white',
-                padding: '30px',
-                marginBottom: '20px',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                scrollMarginTop: '${layoutStyle === 'sections' ? '80px' : '20px'}'
-              }}
-            >
-              <h2 style={{ color: '${primaryColor}', marginTop: 0 }}>{section.icon} {section.name}</h2>
-              {section.content.map((content, idx) => {
-                if (content.type === 'text') {
-                  return <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />;
-                }
-                if (content.type === 'image' && content.url) {
-                  return (
-                    <div key={idx} style={{ textAlign: 'center', margin: '20px 0' }}>
-                      <img src={content.url} alt={section.name} style={{ maxWidth: '100%', borderRadius: '8px' }} />
-                      {content.caption && (
-                        <div style={{ fontStyle: 'italic', marginTop: '12px' }} dangerouslySetInnerHTML={{ __html: content.caption }} />
-                      )}
-                    </div>
-                  );
-                }
-                return null;
-              })}
-            </section>
-          );
-        })}
-        {layoutStyle === 'single' && (
-          <div style={{ textAlign: 'center', padding: '20px', background: 'white', marginTop: '40px', borderRadius: '12px' }}>
-            <button
-              onClick={() => window.print()}
-              style={{
-                background: \`linear-gradient(135deg, ${primaryColor}, ${secondaryColor})\`,
-                color: 'white',
-                padding: '16px 32px',
-                borderRadius: '50px',
-                fontWeight: 600,
-                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.2)',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              📄 Download PDF
-            </button>
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
-`
-        }
-    </script>
+    <!-- Load JavaScript modules in correct order -->
+    <script src="js/utils.js"></script>
+    <script src="js/fileHandlers.js"></script>
+    <script src="js/editor.js"></script>
+    <script src="js/templates.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/ocr.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
-
-
