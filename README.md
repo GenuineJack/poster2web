@@ -43,11 +43,6 @@ Transform documents into beautiful, responsive websites in minutes. No coding re
 
 ## 🚀 Quick Start
 
-### Option 1: Use Online (Recommended)
-Visit the [live demo](https://your-domain.com) and start creating immediately.
-
-### Option 2: Local Development
-
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/poster2web.git
@@ -85,12 +80,12 @@ Drag and drop or browse to select:
 - **Text**: Smart section detection based on headers and content structure
 
 ### 3. **Edit & Customize**
-- **Content Tab**: Edit sections, add text blocks and images
+- **Content Tab**: Edit sections, add text blocks, and images
 - **Design Tab**: Customize colors, fonts, logo, and layout
 - **Settings Tab**: Configure download buttons, contact info, analytics
 
 ### 4. **Export & Deploy**
-Choose your preferred format and download ready-to-use code.
+Choose your preferred format and download the ready-to-use code.
 
 ## 🎨 Templates
 
