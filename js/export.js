@@ -60,18 +60,7 @@ function generateHTMLExport(project, settings) {
         headerAlignment = 'center',
         logoSize = '120',
         enableDarkModeToggle = false,
-        /*
-         * Advanced options such as enablePrintStyles and enableSEO were removed from the
-         * settings as part of the UI simplification. Print styles and SEO tags are
-         * always included by default, so these options are no longer destructured
-         * from the settings object.
-         */
-        uploadedFile = null,
-        downloadButtonText = '',
-        contactButtonUrl = '',
-        contactButtonText = '',
-        analyticsCode = '',
-        userEmail = ''
+        analyticsCode = ''
     } = settings;
     
     const fontFamily = getFontFamily(fontStyle);
@@ -108,7 +97,7 @@ function generateHTMLExport(project, settings) {
     
     ${generateFooter(settings)}
     
-    ${generateJavaScript(layoutStyle, userEmail)}
+    ${generateJavaScript(layoutStyle)}
     ${darkModeJS}
 </body>
 </html>`;
@@ -155,16 +144,22 @@ function generateHTMLStyles(settings) {
             padding: 20px;
         }
         
-        .header {
-            background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
-            color: white;
-            padding: 60px 40px;
-            border-radius: 16px;
-            margin-bottom: 30px;
-            text-align: ${headerAlignment};
-            position: relative;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
+        /* Determine readable text color based on primary color */
+        ${(() => {
+            // Inline JS executed when generating styles; compute contrast color
+            function getContrastColor(hex) {
+                let clean = hex.replace('#', '');
+                if (clean.length === 3) clean = clean.split('').map(ch => ch + ch).join('');
+                const r = parseInt(clean.substring(0,2),16)/255;
+                const g = parseInt(clean.substring(2,4),16)/255;
+                const b = parseInt(clean.substring(4,6),16)/255;
+                const toLinear = (c) => c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4);
+                const L = 0.2126*toLinear(r) + 0.7152*toLinear(g) + 0.0722*toLinear(b);
+                return L > 0.5 ? '#111111' : '#ffffff';
+            }
+            const textColor = getContrastColor(primaryColor);
+            return `.header {\n            background: ${primaryColor};\n            color: ${textColor};\n            padding: 60px 40px;\n            border-radius: 16px;\n            margin-bottom: 30px;\n            text-align: ${headerAlignment};\n            position: relative;\n            box-shadow: 0 4px 20px rgba(0,0,0,0.1);\n        }`;
+        })()}
         
         .logo {
             max-width: ${logoSize}px;
@@ -514,43 +509,33 @@ function generateResponsiveStyles() {
  * Generate custom buttons based on settings
  */
 function generateCustomButtons(settings, layoutStyle) {
-    const buttons = [];
-    
-    // Download button (if file uploaded)
-    if (settings.uploadedFile && settings.uploadedFile.dataUrl) {
-        buttons.push(`
-            <a href="${settings.uploadedFile.dataUrl}" 
-               download="${settings.uploadedFile.name}"
+    const result = [];
+    const btns = Array.isArray(settings.buttons) ? settings.buttons : [];
+    btns.forEach(btn => {
+        const label = btn.label || (btn.type === 'file' ? 'Download' : btn.type === 'email' ? 'Email us' : 'Visit site');
+        if (btn.type === 'file' && btn.file && btn.file.dataUrl) {
+            result.push(`
+            <a href="${btn.file.dataUrl}" 
+               download="${btn.file.name}"
                class="pdf-download">
-                📄 ${settings.downloadButtonText || 'Download'}
+                📄 ${escapeHtml(label)}
             </a>`);
-    }
-    
-    // Contact button (if configured)
-    if (settings.contactButtonUrl) {
-        const isEmail = settings.contactButtonUrl.includes('@');
-        const href = isEmail ? 
-            `mailto:${settings.contactButtonUrl}` : 
-            (settings.contactButtonUrl.startsWith('http') ? 
-                settings.contactButtonUrl : 
-                `https://${settings.contactButtonUrl}`);
-        
-        buttons.push(`
-            <a href="${href}" 
-               ${!isEmail ? 'target="_blank"' : ''}
-               class="pdf-download">
-                📧 ${settings.contactButtonText || 'Contact Us'}
+        } else if (btn.type === 'email' && btn.email) {
+            // Use mailto
+            result.push(`
+            <a href="mailto:${btn.email}" class="pdf-download">
+                📧 ${escapeHtml(label)}
             </a>`);
-    }
-    
-    /*
-     * Previously, if no download or contact button was configured the export would fall
-     * back to rendering a default "Download PDF" print button. The new settings
-     * remove this fallback—if neither a file nor a contact URL is provided then
-     * no button will be shown. Returning the empty array allows the navigation and
-     * footer generators to gracefully handle the absence of custom buttons.
-     */
-    return buttons;
+        } else if (btn.type === 'link' && btn.href) {
+            // Normalize href: prefix http if missing
+            const href = btn.href.startsWith('http') ? btn.href : `https://${btn.href}`;
+            result.push(`
+            <a href="${href}" target="_blank" rel="noopener" class="pdf-download">
+                🔗 ${escapeHtml(label)}
+            </a>`);
+        }
+    });
+    return result;
 }
 
 /**
@@ -559,12 +544,15 @@ function generateCustomButtons(settings, layoutStyle) {
 function generateNavigationHtml(project, settings) {
     const { layoutStyle } = settings;
     const buttons = generateCustomButtons(settings, layoutStyle);
-    
+    // Helper to build label with optional icon
+    const buildLabel = (section) => {
+        const prefix = section.showIcon === false ? '' : `${section.icon} `;
+        return `${prefix}${escapeHtml(section.name)}`;
+    };
     if (layoutStyle === 'sections') {
         const links = project.sections.map(section => 
-            `<a href="#${section.id}">${section.icon} ${section.name}</a>`
+            `<a href="#${section.id}">${buildLabel(section)}</a>`
         ).join('');
-        
         return `
     <nav>
         <div class="nav-container">
@@ -584,7 +572,7 @@ function generateNavigationHtml(project, settings) {
         </button>
         <div id="menuDropdown">
             ${project.sections.map(section => 
-                `<a href="#${section.id}" onclick="toggleMenu()">${section.icon} ${section.name}</a>`
+                `<a href="#${section.id}" onclick="toggleMenu()">${buildLabel(section)}</a>`
             ).join('')}
             <hr>
             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -593,7 +581,6 @@ function generateNavigationHtml(project, settings) {
         </div>
     </div>`;
     }
-    
     return '';
 }
 
@@ -603,6 +590,7 @@ function generateNavigationHtml(project, settings) {
 function generateSectionsHtml(project, settings) {
     return project.sections.map(section => {
         if (section.isHeader) {
+            // Header does not display the section name or icon; show logo and rich text content
             return `
         <div class="header" id="${section.id}">
             ${project.logoUrl ? `<div><img src="${project.logoUrl}" class="logo" alt="Logo"></div>` : ''}
@@ -614,16 +602,17 @@ function generateSectionsHtml(project, settings) {
             }).join('')}
         </div>`;
         } else {
+            const prefix = section.showIcon === false ? '' : `${section.icon} `;
             return `
         <div class="section" id="${section.id}">
-            <h2>${section.icon} ${section.name}</h2>
+            <h2>${prefix}${escapeHtml(section.name)}</h2>
             ${section.content.map(content => {
                 if (content.type === 'text') {
                     return `<div class="content-block">${content.value}</div>`;
                 } else if (content.type === 'image' && content.url) {
                     return `
             <div class="image-block">
-                <img src="${content.url}" alt="${section.name} image">
+                <img src="${content.url}" alt="${escapeHtml(section.name)} image">
                 ${content.caption ? `<div class="image-caption">${content.caption}</div>` : ''}
             </div>`;
                 }
@@ -640,21 +629,15 @@ function generateSectionsHtml(project, settings) {
 function generateFooter(settings) {
     const { layoutStyle } = settings;
     const buttons = generateCustomButtons(settings, layoutStyle);
-    
-    if (layoutStyle === 'single') {
+    // Only render a button container for single-page layouts; no attribution text
+    if (layoutStyle === 'single' && buttons.length > 0) {
         return `
     <div class="pdf-download-container">
         ${buttons.join('')}
-    </div>
-    <div class="footer">
-        <p>Created with SiteWeave</p>
     </div>`;
     }
-    
-    return `
-    <div class="footer">
-        <p>Created with SiteWeave</p>
-    </div>`;
+    // For other layouts, no footer content is necessary
+    return '';
 }
 
 // ===================================================
@@ -672,12 +655,10 @@ function generateReactExport(project, settings) {
         logoSize = '120',
         layoutStyle = 'single',
         titleSize = '32',
-        contentSize = '16',
-        uploadedFile = null,
-        downloadButtonText = '',
-        contactButtonUrl = '',
-        contactButtonText = ''
+        contentSize = '16'
     } = settings;
+    // Determine a readable text colour for the header based on the primary colour
+    const headerTextColor = computeContrastColor(primaryColor);
     
     const buttons = generateCustomButtons(settings, layoutStyle);
     const buttonsJSX = buttons.map(btn => {
@@ -706,8 +687,8 @@ const Container = styled.div\`
 \`;
 
 const Header = styled.header\`
-  background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
-  color: white;
+  background: ${primaryColor};
+  color: ${headerTextColor};
   padding: 60px 40px;
   border-radius: 16px;
   margin-bottom: 30px;
@@ -868,7 +849,7 @@ const WebsiteComponent = () => {
         <MenuDropdown open={menuOpen}>
           {sections.map((section) => (
             <a key={section.id} href={\`#\${section.id}\`} onClick={() => setMenuOpen(false)}>
-              {section.icon} {section.name}
+              {section.showIcon === false ? '' : section.icon} {section.name}
             </a>
           ))}
           <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
@@ -890,7 +871,7 @@ const WebsiteComponent = () => {
         
         return (
           <Section key={section.id} id={section.id}>
-            <h2>{section.icon} {section.name}</h2>
+            <h2>{section.showIcon === false ? '' : section.icon} {section.name}</h2>
             {section.content.map((content, idx) => {
               if (content.type === 'text') {
                 return <div key={idx} dangerouslySetInnerHTML={{ __html: content.value }} />;
@@ -937,12 +918,11 @@ function generateNextJSExport(project, settings) {
         logoSize = '120',
         layoutStyle = 'single',
         titleSize = '32',
-        contentSize = '16',
-        uploadedFile = null,
-        downloadButtonText = '',
-        contactButtonUrl = '',
-        contactButtonText = ''
+        contentSize = '16'
     } = settings;
+
+    // Determine a readable text colour for the header based on the primary colour
+    const headerTextColor = computeContrastColor(primaryColor);
     
     const buttons = generateCustomButtons(settings, layoutStyle);
     
@@ -995,8 +975,8 @@ export default function Page() {
                 key={section.id}
                 id={section.id}
                 style={{
-                  background: \`linear-gradient(135deg, ${primaryColor}, ${secondaryColor})\`,
-                  color: 'white',
+                  background: '${primaryColor}',
+                  color: '${headerTextColor}',
                   padding: '60px 40px',
                   borderRadius: '16px',
                   marginBottom: '30px',
@@ -1042,7 +1022,7 @@ export default function Page() {
               }}
             >
               <h2 style={{ color: '${primaryColor}', marginTop: 0, fontSize: '${Math.round(titleSize * 0.75)}px' }}>
-                {section.icon} {section.name}
+                {section.showIcon === false ? '' : section.icon} {section.name}
               </h2>
               {section.content.map((content, idx) => {
                 if (content.type === 'text') {
@@ -1159,7 +1139,7 @@ function generateNextJSMenu(settings, buttons) {
                   onMouseOver={(e) => e.target.style.background = '#f0fdf4'}
                   onMouseOut={(e) => e.target.style.background = 'transparent'}
                 >
-                  {section.icon} {section.name}
+                  {section.showIcon === false ? '' : section.icon} {section.name}
                 </a>
               ))}
               <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
@@ -1203,6 +1183,26 @@ function escapeHtml(text) {
 }
 
 /**
+ * Compute a contrasting text color (black or white) given a background hex color.
+ * Uses relative luminance to determine readability.
+ * @param {string} hex Hex color string (e.g., '#16a34a')
+ * @returns {string} '#ffffff' or '#111111'
+ */
+function computeContrastColor(hex) {
+    let clean = hex.replace('#', '');
+    // Expand shorthand form (e.g. #abc) to full form (#aabbcc)
+    if (clean.length === 3) {
+        clean = clean.split('').map(ch => ch + ch).join('');
+    }
+    const r = parseInt(clean.substring(0, 2), 16) / 255;
+    const g = parseInt(clean.substring(2, 4), 16) / 255;
+    const b = parseInt(clean.substring(4, 6), 16) / 255;
+    const toLinear = (c) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    return L > 0.5 ? '#111111' : '#ffffff';
+}
+
+/**
  * Sanitize filename
  */
 function sanitizeFilename(filename) {
@@ -1214,7 +1214,8 @@ function sanitizeFilename(filename) {
  */
 function generateSEOTags(project, settings) {
     const title = escapeHtml(project.title || 'Website');
-    const description = 'Professional website created with SiteWeave';
+    // Use a generic description without referencing SiteWeave
+    const description = 'Professional website';
     
     return `
     <meta name="description" content="${description}">
@@ -1359,7 +1360,7 @@ function generateDarkModeJS() {
 /**
  * Generate JavaScript for interactive elements
  */
-function generateJavaScript(layoutStyle, userEmail) {
+function generateJavaScript(layoutStyle) {
     let js = '';
     
     if (layoutStyle === 'menu') {
@@ -1379,17 +1380,6 @@ function generateJavaScript(layoutStyle, userEmail) {
         });
     </script>`;
     }
-    
-    if (userEmail) {
-        js += `
-    <script>
-        // Contact form handler
-        function handleContact() {
-            window.location.href = 'mailto:${userEmail}';
-        }
-    </script>`;
-    }
-    
     return js;
 }
 

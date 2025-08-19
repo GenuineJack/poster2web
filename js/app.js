@@ -26,11 +26,19 @@ let APP_STATE = {
         logoSize: '120',
         layoutStyle: 'single',
         darkMode: false,
-        uploadedFile: null,
-        uploadedFileName: null,
-        downloadButtonText: '',
-        contactButtonUrl: '',
-        contactButtonText: '',
+        /**
+         * Custom buttons for the website. A maximum of three entries is supported.
+         * Each button is an object with an id, a type ('file', 'link' or 'email'),
+         * a label and additional fields depending on the type:
+         *  - type 'file' includes a `file` object with name and dataUrl
+         *  - type 'link' includes a `href` property
+         *  - type 'email' includes an `email` property
+         */
+        buttons: [],
+
+        /**
+         * Analytics snippet to be injected into the exported HTML head.
+         */
         analyticsCode: ''
     },
     currentScreen: 'upload',
@@ -58,6 +66,15 @@ function initializeApp() {
     
     // Load saved project if exists
     loadSavedProject();
+
+    // Ensure a header section always exists on load.  If a legacy project
+    // has no header or has multiple header flags, this will insert or
+    // normalize it so that there is exactly one header at index 0.  The
+    // function is idempotent and safe to call multiple times.
+    ensureHeaderExists(APP_STATE.currentProject);
+
+    // Migrate legacy settings (download/contact buttons) to the new buttons array
+    migrateLegacySettings();
     
     // Initialize file handling
     initializeFileHandling();
@@ -119,13 +136,11 @@ function cacheDOMReferences() {
         layoutStyle: document.getElementById('layoutStyle'),
         
         // Settings tab elements
-        downloadFileInput: document.getElementById('downloadFileInput'),
-        uploadedFileDisplay: document.getElementById('uploadedFileDisplay'),
-        downloadButtonText: document.getElementById('downloadButtonText'),
-        contactButtonUrl: document.getElementById('contactButtonUrl'),
-        contactButtonText: document.getElementById('contactButtonText'),
-        analyticsCode: document.getElementById('analyticsCode'),
+        // Buttons manager elements
+        buttonsContainer: document.getElementById('buttonsContainer'),
+        addButtonMenu: document.getElementById('addButtonMenu'),
         buttonPreview: document.getElementById('buttonPreview'),
+        analyticsCode: document.getElementById('analyticsCode'),
         
         // Modals
         previewModal: document.getElementById('previewModal'),
@@ -149,6 +164,69 @@ function loadSavedProject() {
         APP_STATE.currentProject = saved;
         console.log('📂 Loaded saved project:', saved.title);
     }
+}
+
+/**
+ * Migrate legacy button settings from older versions of the app to the new
+ * `settings.buttons` array. This function checks for the presence of the
+ * legacy fields (uploadedFile, downloadButtonText, contactButtonUrl,
+ * contactButtonText) that may exist on projects saved before the refactor.
+ * If found, it creates up to two buttons (file and contact/email) and
+ * appends them to the buttons array, preserving any custom labels. After
+ * migration the legacy properties are removed to avoid conflicts.
+ */
+function migrateLegacySettings() {
+    const settings = APP_STATE.settings;
+    if (!settings) return;
+    // If buttons array already exists and has entries, do not migrate.
+    if (Array.isArray(settings.buttons) && settings.buttons.length > 0) {
+        // Remove any stale legacy fields if present
+        delete settings.uploadedFile;
+        delete settings.uploadedFileName;
+        delete settings.downloadButtonText;
+        delete settings.contactButtonUrl;
+        delete settings.contactButtonText;
+        return;
+    }
+    const migratedButtons = [];
+    // Migrate uploaded file to file button
+    if (settings.uploadedFile) {
+        const label = settings.downloadButtonText || 'Download';
+        migratedButtons.push({
+            id: createUniqueId(),
+            type: 'file',
+            label: label,
+            file: settings.uploadedFile
+        });
+    }
+    // Migrate contact button (URL or email)
+    if (settings.contactButtonUrl) {
+        const url = settings.contactButtonUrl.trim();
+        let type = 'link';
+        let valueKey = 'href';
+        let value = url;
+        if (url.includes('@') && !url.match(/^https?:/i)) {
+            // treat as email if contains '@' and doesn't look like a URL
+            type = 'email';
+            valueKey = 'email';
+        }
+        const label = settings.contactButtonText || 'Contact Us';
+        const buttonObj = {
+            id: createUniqueId(),
+            type: type,
+            label: label
+        };
+        buttonObj[valueKey] = url;
+        migratedButtons.push(buttonObj);
+    }
+    // Assign migrated buttons (max 3) to settings.buttons
+    settings.buttons = migratedButtons.slice(0, 3);
+    // Remove legacy fields
+    delete settings.uploadedFile;
+    delete settings.uploadedFileName;
+    delete settings.downloadButtonText;
+    delete settings.contactButtonUrl;
+    delete settings.contactButtonText;
 }
 
 // ===================================================
@@ -204,7 +282,9 @@ function resetToUploadScreen() {
         logoUrl: null
     };
     
-    // Reset settings to defaults
+    // Reset settings to defaults. Legacy fields related to download/contact
+    // buttons are omitted in favour of the new `buttons` array. Only
+    // primary/secondary colours, typography and layout options are retained.
     APP_STATE.settings = {
         primaryColor: '#16a34a',
         secondaryColor: '#15803d',
@@ -215,11 +295,7 @@ function resetToUploadScreen() {
         logoSize: '120',
         layoutStyle: 'single',
         darkMode: false,
-        uploadedFile: null,
-        uploadedFileName: null,
-        downloadButtonText: '',
-        contactButtonUrl: '',
-        contactButtonText: '',
+        buttons: [],
         analyticsCode: ''
     };
     
@@ -289,12 +365,16 @@ function handleFile(file) {
     showLoadingScreen('Processing your file', 'Extracting content and analyzing structure...');
     
     // Process file
-    window.LWB_FileHandlers.handleFile(
+        window.LWB_FileHandlers.handleFile(
         file,
         (sections, fileName) => {
             // Success callback
             APP_STATE.currentProject.sections = sections;
             APP_STATE.currentProject.title = fileName.replace(/\.[^/.]+$/, '') || 'My Website';
+            
+            // Ensure there is exactly one header at index 0.  This guards
+            // against import handlers that do not create a header.
+            ensureHeaderExists(APP_STATE.currentProject);
             
             // Update UI
             if (DOM_REFS.pdfName) {
@@ -303,6 +383,9 @@ function handleFile(file) {
             
             // Show editor
             showScreen('editor');
+            // Trigger a project update to refresh the preview and schedule an autosave
+            updateProject();
+            // Mark unsaved changes after update (updateProject will schedule a save later)
             markUnsavedChanges();
             
             window.LWB_Utils.showToast('File processed successfully!', 'success');
@@ -374,14 +457,12 @@ function loadSettingsIntoUI() {
     if (DOM_REFS.layoutStyle) DOM_REFS.layoutStyle.value = settings.layoutStyle;
     if (DOM_REFS.analyticsCode) DOM_REFS.analyticsCode.value = settings.analyticsCode;
     
-    // Button settings
-    if (DOM_REFS.downloadButtonText) DOM_REFS.downloadButtonText.value = settings.downloadButtonText || '';
-    if (DOM_REFS.contactButtonUrl) DOM_REFS.contactButtonUrl.value = settings.contactButtonUrl || '';
-    if (DOM_REFS.contactButtonText) DOM_REFS.contactButtonText.value = settings.contactButtonText || '';
-    
+    // Render custom buttons manager
+    if (typeof renderButtonsManager === 'function') {
+        renderButtonsManager();
+    }
     // Update value displays
     updateSizeDisplays();
-    updateButtonPreview();
 }
 
 /**
@@ -400,6 +481,100 @@ function updateSizeDisplays() {
 }
 
 /**
+ * Enforce that the header section (if any) always occupies index 0 in
+ * the currentProject.sections array. If multiple sections are marked
+ * as header, only the first encountered remains header; others are
+ * demoted. If no section is marked header, nothing happens.
+ */
+function enforceHeaderPosition() {
+    const sections = APP_STATE.currentProject.sections;
+    if (!Array.isArray(sections) || sections.length === 0) return;
+    let headerIndex = -1;
+    // Find first header index and demote any subsequent headers
+    for (let i = 0; i < sections.length; i++) {
+        if (sections[i].isHeader) {
+            if (headerIndex === -1) {
+                headerIndex = i;
+            } else {
+                // More than one header found; demote extra headers
+                sections[i].isHeader = false;
+            }
+        }
+    }
+    if (headerIndex > 0) {
+        // Move the header section to the front
+        const [headerSection] = sections.splice(headerIndex, 1);
+        sections.unshift(headerSection);
+    }
+}
+
+/**
+ * Ensure that the provided project has exactly one header section at index 0.
+ *
+ * This function will inspect the project.sections array and do the following:
+ *  - If no section is marked as the header, a new header section will be
+ *    created and inserted at the beginning of the array.  The new header
+ *    will use the project title for its H1 if available; otherwise a
+ *    generic "Header" label is used.  A default icon is chosen and the
+ *    isHeader flag is set to true.
+ *  - If multiple sections are flagged as headers, only the first one is
+ *    promoted to index 0.  Any additional headers are demoted by
+ *    clearing their isHeader flag.
+ *  - If a header exists but is not located at index 0, it will be moved
+ *    to the front of the array.
+ *
+ * This helper is idempotent and may be safely called whenever the
+ * sections array might have been mutated (e.g. after loading, importing,
+ * creating a blank project or updating the project).  It does not
+ * perform any rendering or saving; callers should invoke updateProject()
+ * afterwards if the change should trigger a re-render.
+ *
+ * @param {object} project The current project whose sections should be normalized
+ */
+function ensureHeaderExists(project) {
+    if (!project || !Array.isArray(project.sections)) return;
+    const sections = project.sections;
+    let headerIndices = [];
+    for (let i = 0; i < sections.length; i++) {
+        if (sections[i].isHeader) {
+            headerIndices.push(i);
+        }
+    }
+    if (headerIndices.length === 0) {
+        // No existing header – insert a new one at the beginning
+        const title = project.title || 'Header';
+        const headerId = (window.LWB_Utils && window.LWB_Utils.createUniqueId) ? window.LWB_Utils.createUniqueId() : (Date.now().toString(36));
+        const headerSection = {
+            id: headerId,
+            name: 'Header',
+            icon: '📄',
+            isHeader: true,
+            content: [
+                {
+                    type: 'text',
+                    // Wrap the title in an H1; allowHtml false to ensure consistency
+                    value: `<h1>${title}</h1>`,
+                    allowHtml: false,
+                    id: (window.LWB_Utils && window.LWB_Utils.createUniqueId) ? window.LWB_Utils.createUniqueId() : (Date.now().toString(36) + 'c')
+                }
+            ]
+        };
+        sections.unshift(headerSection);
+        return;
+    }
+    // If multiple headers exist, demote all but the first
+    for (let i = 1; i < headerIndices.length; i++) {
+        sections[headerIndices[i]].isHeader = false;
+    }
+    // Promote the first header to index 0 if necessary
+    const firstHeaderIndex = headerIndices[0];
+    if (firstHeaderIndex > 0) {
+        const [headerSection] = sections.splice(firstHeaderIndex, 1);
+        sections.unshift(headerSection);
+    }
+}
+
+/**
  * Mark project as having unsaved changes
  */
 function markUnsavedChanges() {
@@ -411,6 +586,10 @@ function markUnsavedChanges() {
  */
 function updateProject() {
     window.updateProject = updateProject;
+    // Guarantee a header section exists and is normalized
+    ensureHeaderExists(APP_STATE.currentProject);
+    // Ensure the header section remains at the top of the array if present
+    enforceHeaderPosition();
     markUnsavedChanges();
     updatePreview();
     
@@ -475,6 +654,27 @@ function generatePreviewHtml() {
     const sectionsHtml = generatePreviewSections();
     const buttonsHtml = generatePreviewButtons();
     
+    // Utility to compute text color based on background brightness
+    function getContrastColor(hex) {
+        // Remove '#' if present
+        let clean = hex.replace('#', '');
+        // If shorthand (#abc) expand to full form
+        if (clean.length === 3) {
+            clean = clean.split('').map(ch => ch + ch).join('');
+        }
+        const r = parseInt(clean.substring(0, 2), 16) / 255;
+        const g = parseInt(clean.substring(2, 4), 16) / 255;
+        const b = parseInt(clean.substring(4, 6), 16) / 255;
+        // Calculate relative luminance per WCAG
+        const toLinear = (c) => {
+            return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        };
+        const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+        return L > 0.5 ? '#111111' : '#ffffff';
+    }
+
+    const headerTextColor = getContrastColor(primaryColor);
+
     return `
         <!DOCTYPE html>
         <html>
@@ -501,8 +701,8 @@ function generatePreviewHtml() {
                     padding: 20px;
                 }
                 .header {
-                    background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
-                    color: white;
+                    background: ${primaryColor};
+                    color: ${headerTextColor};
                     padding: 60px 40px;
                     border-radius: 16px;
                     margin-bottom: 30px;
@@ -736,13 +936,19 @@ function generatePreviewNavigation() {
     const { settings, currentProject } = APP_STATE;
     const { layoutStyle } = settings;
     const buttons = generatePreviewButtonsArray();
-    
+
+    // Helper to build section link label respecting the showIcon flag
+    const buildSectionLabel = (section) => {
+        const iconPart = section.showIcon === false ? '' : `${section.icon} `;
+        return `${iconPart}${section.name}`;
+    };
+
     if (layoutStyle === 'sections') {
         return `
             <nav>
                 <div class="nav-container">
                     ${currentProject.sections.map(section => 
-                        `<a href="#${section.id}">${section.icon} ${section.name}</a>`
+                        `<a href="#${section.id}">${buildSectionLabel(section)}</a>`
                     ).join('')}
                     <div style="margin-left: auto;">
                         ${buttons.join('')}
@@ -760,7 +966,7 @@ function generatePreviewNavigation() {
                 </button>
                 <div id="menuDropdown">
                     ${currentProject.sections.map(section => 
-                        `<a href="#${section.id}" onclick="toggleMenu()">${section.icon} ${section.name}</a>`
+                        `<a href="#${section.id}" onclick="toggleMenu()">${buildSectionLabel(section)}</a>`
                     ).join('')}
                     <hr>
                     ${buttons.join('')}
@@ -768,7 +974,7 @@ function generatePreviewNavigation() {
             </div>
         `;
     }
-    
+
     return '';
 }
 
@@ -776,23 +982,34 @@ function generatePreviewNavigation() {
  * Generate preview buttons array
  */
 function generatePreviewButtonsArray() {
-    const buttons = [];
-    
-    if (APP_STATE.settings.uploadedFile) {
-        const text = APP_STATE.settings.downloadButtonText || 'Download';
-        buttons.push(`<button class="pdf-download" onclick="alert('Download: ${APP_STATE.settings.uploadedFile.name}')">📄 ${text}</button>`);
-    }
-    
-    if (APP_STATE.settings.contactButtonUrl) {
-        const text = APP_STATE.settings.contactButtonText || 'Contact Us';
-        buttons.push(`<button class="pdf-download" onclick="alert('Contact: ${APP_STATE.settings.contactButtonUrl}')">📧 ${text}</button>`);
-    }
-    
-    if (buttons.length === 0) {
-        buttons.push(`<button class="pdf-download" onclick="alert('PDF download would be triggered here')">📄 Download PDF</button>`);
-    }
-    
-    return buttons;
+    const result = [];
+    const buttonSettings = APP_STATE.settings?.buttons || [];
+    // Simple HTML escaping helper
+    const esc = (str) => {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+    buttonSettings.forEach(btn => {
+        const label = btn.label || (btn.type === 'file' ? 'Download' : btn.type === 'email' ? 'Email us' : 'Visit site');
+        if (btn.type === 'file' && btn.file) {
+            // Use alert for preview to indicate file download
+            result.push(`<button class="pdf-download" onclick="alert('Download: ${esc(btn.file.name)}')">📄 ${esc(label)}</button>`);
+        } else if (btn.type === 'email' && btn.email) {
+            result.push(`<button class="pdf-download" onclick="alert('Email: ${esc(btn.email)}')">📧 ${esc(label)}</button>`);
+        } else if (btn.type === 'link' && btn.href) {
+            // Normalize URL: prefix with https:// if protocol missing
+            let normalized = btn.href.trim();
+            if (!/^https?:\/\//i.test(normalized)) {
+                normalized = 'https://' + normalized;
+            }
+            result.push(`<button class="pdf-download" onclick="alert('Link: ${esc(normalized)}')">🔗 ${esc(label)}</button>`);
+        }
+    });
+    return result;
 }
 
 /**
@@ -813,6 +1030,7 @@ function generatePreviewButtons() {
 function generatePreviewSections() {
     return APP_STATE.currentProject.sections.map(section => {
         if (section.isHeader) {
+            // Header section does not display the section name or icon; only the logo and content
             return `
                 <div class="header" id="${section.id}">
                     ${APP_STATE.currentProject.logoUrl ? `<div><img src="${APP_STATE.currentProject.logoUrl}" class="logo" alt="Logo"></div>` : ''}
@@ -825,9 +1043,11 @@ function generatePreviewSections() {
                 </div>
             `;
         } else {
+            // Determine label prefix: include icon only if showIcon is not explicitly false
+            const labelPrefix = section.showIcon === false ? '' : `${section.icon} `;
             return `
                 <div class="section" id="${section.id}">
-                    <h2>${section.icon} ${section.name}</h2>
+                    <h2>${labelPrefix}${section.name}</h2>
                     ${section.content.map(content => {
                         if (content.type === 'text') {
                             return `<div class="content-block">${content.value}</div>`;
@@ -984,104 +1204,212 @@ function switchTab(tabName) {
 // SETTINGS TAB FUNCTIONALITY
 // ===================================================
 
+// ===================================================
+// CUSTOM BUTTONS MANAGER
+// ===================================================
+
 /**
- * Handle download file upload
+ * Create a new button and add it to the settings. Supports a maximum of three buttons.
+ * @param {string} type The button type ('file', 'link', or 'email').
  */
-function handleDownloadFileUpload(event) {
+function addButton(type) {
+    if (!['file', 'link', 'email'].includes(type)) return;
+    const buttons = APP_STATE.settings.buttons || [];
+    if (buttons.length >= 3) {
+        window.LWB_Utils.showToast('You can only add up to 3 buttons', 'error');
+        return;
+    }
+    const id = createUniqueId();
+    // Default labels depending on type
+    let label;
+    if (type === 'file') label = 'Download';
+    else if (type === 'link') label = 'Visit site';
+    else label = 'Email us';
+    const newBtn = { id, type, label };
+    // For link/email, create empty field for user to fill
+    if (type === 'link') newBtn.href = '';
+    if (type === 'email') newBtn.email = '';
+    buttons.push(newBtn);
+    APP_STATE.settings.buttons = buttons;
+    renderButtonsManager();
+    updateProject();
+}
+
+/**
+ * Update a button's property. Accepts partial updates.
+ * @param {string} id Button id
+ * @param {Object} updates Key-value pairs of properties to update
+ */
+function updateButton(id, updates) {
+    const buttons = APP_STATE.settings.buttons || [];
+    const index = buttons.findIndex(b => b.id === id);
+    if (index === -1) return;
+    buttons[index] = { ...buttons[index], ...updates };
+    APP_STATE.settings.buttons = buttons;
+    renderButtonsManager();
+    updateProject();
+}
+
+/**
+ * Remove a button by id
+ * @param {string} id Button id
+ */
+function removeButton(id) {
+    const buttons = APP_STATE.settings.buttons || [];
+    APP_STATE.settings.buttons = buttons.filter(b => b.id !== id);
+    renderButtonsManager();
+    updateProject();
+}
+
+/**
+ * Move a button from one index to another to reorder
+ * @param {number} fromIndex Original index
+ * @param {number} toIndex Target index
+ */
+function reorderButtons(fromIndex, toIndex) {
+    const buttons = APP_STATE.settings.buttons || [];
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= buttons.length || toIndex >= buttons.length) return;
+    const [moved] = buttons.splice(fromIndex, 1);
+    buttons.splice(toIndex, 0, moved);
+    APP_STATE.settings.buttons = buttons;
+    renderButtonsManager();
+    updateProject();
+}
+
+/**
+ * Handle file upload for a specific button. Reads the file as data URL and updates the button object.
+ * @param {Event} event The file input change event
+ * @param {string} id The id of the button being updated
+ */
+function handleButtonFileUpload(event, id) {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(e) {
-        APP_STATE.settings.uploadedFile = {
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            dataUrl: e.target.result
-        };
-        APP_STATE.settings.uploadedFileName = file.name;
-
-        const display = DOM_REFS.uploadedFileDisplay;
-        if (display) {
-            display.innerHTML = `
-                <div class="uploaded-file-info">
-                    <div class="file-icon">${getFileIcon(file.name)}</div>
-                    <div class="file-details">
-                        <h4>${file.name}</h4>
-                        <p>${formatFileSize(file.size)} • ${getFileType(file.name).toUpperCase()}</p>
-                    </div>
-                    <button class="btn btn-small btn-secondary" onclick="removeUploadedFile()">Remove</button>
-                </div>
-            `;
-        }
-
-        updateButtonPreview();
-        updateProject();
-        window.LWB_Utils.showToast('Download file uploaded', 'success');
+        updateButton(id, {
+            file: {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                dataUrl: e.target.result
+            }
+        });
+        window.LWB_Utils.showToast('File uploaded for button', 'success');
     };
     reader.readAsDataURL(file);
 }
 
 /**
- * Remove uploaded file
+ * Render the buttons manager UI. This function rebuilds the list of button controls
+ * and the add button controls inside the settings tab whenever the buttons array changes.
  */
-function removeUploadedFile() {
-    APP_STATE.settings.uploadedFile = null;
-    APP_STATE.settings.uploadedFileName = null;
-    if (DOM_REFS.downloadFileInput) DOM_REFS.downloadFileInput.value = '';
-    
-    const display = DOM_REFS.uploadedFileDisplay;
-    if (display) {
-        display.innerHTML = `
-            <div class="no-file-message">
-                <span>📎</span>
-                <p>No file uploaded</p>
-                <small>Upload a PDF or document for visitors to download</small>
-            </div>
-        `;
-    }
-    
-    updateButtonPreview();
-    updateProject();
-}
-
-/**
- * Update button settings
- */
-function updateButtonSettings() {
-    APP_STATE.settings.downloadButtonText = DOM_REFS.downloadButtonText?.value || '';
-    APP_STATE.settings.contactButtonUrl = DOM_REFS.contactButtonUrl?.value || '';
-    APP_STATE.settings.contactButtonText = DOM_REFS.contactButtonText?.value || '';
-    
-    updateButtonPreview();
-    updateProject();
-}
-
-/**
- * Update button preview
- */
-function updateButtonPreview() {
+function renderButtonsManager() {
+    const container = DOM_REFS.buttonsContainer;
+    const addMenu = DOM_REFS.addButtonMenu;
     const preview = DOM_REFS.buttonPreview;
-    if (!preview) return;
-    
-    let buttons = [];
-    
-    // Download button preview
-    if (APP_STATE.settings.uploadedFile) {
-        const text = APP_STATE.settings.downloadButtonText || 'Download';
-        buttons.push(`<a href="#" class="pdf-download" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 8px; font-weight: 600; margin: 8px; text-decoration: none; transition: all 0.3s ease;">📄 ${text}</a>`);
+    if (!container) return;
+    const buttons = APP_STATE.settings.buttons || [];
+    // Clear container
+    container.innerHTML = '';
+    // Build list items
+    buttons.forEach((btn, index) => {
+        const item = document.createElement('div');
+        item.className = 'button-item';
+        // Type label
+        const typeLabel = document.createElement('span');
+        typeLabel.textContent = btn.type === 'file' ? 'File' : btn.type === 'link' ? 'Link' : 'Email';
+        item.appendChild(typeLabel);
+        // Label input
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.value = btn.label || '';
+        labelInput.placeholder = 'Button label';
+        labelInput.className = 'form-input';
+        labelInput.onchange = (e) => updateButton(btn.id, { label: e.target.value });
+        item.appendChild(labelInput);
+        // Value input (file/link/email)
+        let valueInput;
+        if (btn.type === 'file') {
+            valueInput = document.createElement('div');
+            const fileButton = document.createElement('label');
+            fileButton.className = 'file-upload-label';
+            fileButton.style.display = 'inline-block';
+            fileButton.style.padding = '6px 12px';
+            fileButton.style.background = 'var(--primary)';
+            fileButton.style.color = 'white';
+            fileButton.style.borderRadius = 'var(--radius-md)';
+            fileButton.style.cursor = 'pointer';
+            fileButton.textContent = btn.file ? 'Change File' : 'Upload File';
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.style.display = 'none';
+            fileInput.onchange = (e) => handleButtonFileUpload(e, btn.id);
+            fileButton.appendChild(fileInput);
+            valueInput.appendChild(fileButton);
+            if (btn.file) {
+                const fileInfo = document.createElement('div');
+                fileInfo.style.fontSize = '12px';
+                fileInfo.style.marginTop = '4px';
+                fileInfo.textContent = btn.file.name;
+                valueInput.appendChild(fileInfo);
+            }
+        } else {
+            valueInput = document.createElement('input');
+            valueInput.type = btn.type === 'email' ? 'email' : 'url';
+            valueInput.value = btn.type === 'email' ? (btn.email || '') : (btn.href || '');
+            valueInput.placeholder = btn.type === 'email' ? 'Email address' : 'https://example.com';
+            valueInput.className = 'form-input';
+            valueInput.onchange = (e) => {
+                const val = e.target.value;
+                if (btn.type === 'email') {
+                    updateButton(btn.id, { email: val });
+                } else {
+                    updateButton(btn.id, { href: val });
+                }
+            };
+        }
+        item.appendChild(valueInput);
+        // Reorder controls
+        const reorderContainer = document.createElement('div');
+        reorderContainer.style.display = 'flex';
+        reorderContainer.style.flexDirection = 'column';
+        const upBtn = document.createElement('button');
+        upBtn.className = 'icon-btn';
+        upBtn.textContent = '↑';
+        upBtn.disabled = (index === 0);
+        upBtn.onclick = () => reorderButtons(index, index - 1);
+        const downBtn = document.createElement('button');
+        downBtn.className = 'icon-btn';
+        downBtn.textContent = '↓';
+        downBtn.disabled = (index === buttons.length - 1);
+        downBtn.onclick = () => reorderButtons(index, index + 1);
+        reorderContainer.appendChild(upBtn);
+        reorderContainer.appendChild(downBtn);
+        item.appendChild(reorderContainer);
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'icon-btn danger';
+        deleteBtn.textContent = '🗑';
+        deleteBtn.onclick = () => removeButton(btn.id);
+        item.appendChild(deleteBtn);
+        container.appendChild(item);
+    });
+    // Update add button menu visibility
+    if (addMenu) {
+        if (buttons.length >= 3) {
+            addMenu.style.display = 'none';
+        } else {
+            addMenu.style.display = '';
+        }
     }
-    
-    // Contact button preview
-    if (APP_STATE.settings.contactButtonUrl) {
-        const text = APP_STATE.settings.contactButtonText || 'Contact Us';
-        buttons.push(`<a href="#" class="pdf-download" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 8px; font-weight: 600; margin: 8px; text-decoration: none; transition: all 0.3s ease;">📧 ${text}</a>`);
-    }
-    
-    if (buttons.length > 0) {
-        preview.innerHTML = buttons.join('');
-    } else {
-        preview.innerHTML = '<p style="color: var(--muted-foreground); font-size: 14px;">Configure buttons above to see preview</p>';
+    // Render preview of buttons
+    if (preview) {
+        const previewButtons = generatePreviewButtonsArray();
+        if (previewButtons.length > 0) {
+            preview.innerHTML = previewButtons.join('');
+        } else {
+            preview.innerHTML = '<p style="color: var(--muted-foreground); font-size: 14px;">No buttons configured</p>';
+        }
     }
 }
 
@@ -1481,10 +1809,13 @@ window.exportWebsite = exportWebsite;
 window.closeExportModal = closeExportModal;
 window.downloadWebsite = downloadWebsite;
 window.updatePreview = updatePreview;
-window.handleDownloadFileUpload = handleDownloadFileUpload;
-window.removeUploadedFile = removeUploadedFile;
-window.updateButtonSettings = updateButtonSettings;
-window.updateButtonPreview = updateButtonPreview;
+// Buttons manager exposure
+window.addButton = addButton;
+window.updateButton = updateButton;
+window.removeButton = removeButton;
+window.reorderButtons = reorderButtons;
+window.renderButtonsManager = renderButtonsManager;
+window.handleButtonFileUpload = handleButtonFileUpload;
 window.toggleBuilderDarkMode = toggleBuilderDarkMode;
 
 // Editor functions (connected to the modular editor)

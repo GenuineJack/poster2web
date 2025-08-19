@@ -1160,11 +1160,18 @@ input[type="file"] {
 .preview-container {
     background: var(--card);
     border-radius: var(--radius-xl);
-    overflow: hidden;
+    /* Allow the preview to scroll internally so the top of the website is visible.
+       Previously this container used overflow: hidden which caused the top of the
+       previewed page to be cut off beneath the faux browser header. Setting
+       overflow-y: auto ensures that users can scroll to the very top of
+       the embedded website. */
+    overflow-y: auto;
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--border);
     height: 100%;
-    max-height: calc(100vh - 260px);
+    /* Remove explicit max-height: the parent .preview-section controls the height.
+       Keeping a max-height here caused the header portion of the preview to be
+       clipped when rendered. */
     display: flex;
     flex-direction: column;
 }
@@ -1177,6 +1184,12 @@ input[type="file"] {
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
+    /* Keep the preview header visible while scrolling the preview.  Using
+       sticky positioning ensures the faux browser chrome remains in
+       view without overlaying the website content beneath it. */
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 .preview-dots {
@@ -1205,6 +1218,17 @@ input[type="file"] {
     flex: 1;
     border: none;
     background: white;
+}
+
+/* Wrapper around the preview iframe inside the editor.  By adding a
+   top margin equal to the faux browser header height we prevent the
+   website content from being hidden beneath the header.  Using flex
+   ensures the iframe expands to fill the remaining space in the
+   preview container. */
+.preview-iframe-wrapper {
+    margin-top: var(--previewToolbarH, 56px);
+    flex: 1;
+    display: flex;
 }
 
 /* ==================================================
@@ -1814,6 +1838,31 @@ body.dark-mode .footer {
 .pdf-download:hover { 
     transform: translateY(-2px); 
     box-shadow: var(--shadow-lg);
+}
+
+/* ==================================================
+   HEADER BADGE STYLING
+   ================================================== */
+/* Badge used in editor to indicate which section is the header */
+.header-badge {
+    padding: 4px 8px;
+    background: var(--primary);
+    color: white;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* ==================================================
+   PREVIEW CONTAINER ADJUSTMENTS
+   ================================================== */
+/* Ensure the top of the preview page is not clipped by overlay elements */
+.preview-container {
+    overflow-y: auto;
+}
+.preview-iframe {
+    margin-top: 0;
 }
 
 /* ==================================================
