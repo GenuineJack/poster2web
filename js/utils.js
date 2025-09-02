@@ -361,22 +361,27 @@ function parseTextIntoSections(text, fileName) {
     
     // Split text into lines
     const lines = text.split(/\r?\n/).filter(line => line.trim());
-    
     let currentSection = null;
     let currentContent = [];
-    
+    const toTitleCase = str => str.charAt(0).toUpperCase() + str.slice(1);
     for (const line of lines) {
-        const lowerLine = line.toLowerCase().trim();
-        
-        // Check if this line is a section header
-        const matchedHeader = sectionHeaders.find(header => {
-            return lowerLine.startsWith(header) || 
-                   lowerLine === header ||
-                   lowerLine.match(new RegExp(`^\\d+\\.?\\s*${header}`, 'i')) ||
-                   lowerLine.includes(header + ':');
-        });
-        
-        if (matchedHeader) {
+        const trimmed = line.trim();
+        const lowerLine = trimmed.toLowerCase();
+        let headerCandidate = null;
+        // Detect numbered headings (e.g. "1. Introduction" or "2 Methodology")
+        const numMatch = trimmed.match(/^\d+\.?\s+(.+)/);
+        if (numMatch) {
+            headerCandidate = numMatch[1].trim();
+        } else {
+            // Match predefined headers by prefix, exact match or followed by a colon
+            headerCandidate = sectionHeaders.find(header => {
+                return lowerLine.startsWith(header) ||
+                       lowerLine === header ||
+                       new RegExp(`^\d+\.?\s*${header}`, 'i').test(lowerLine) ||
+                       lowerLine.includes(header + ':');
+            });
+        }
+        if (headerCandidate) {
             // Save previous section if exists
             if (currentSection && currentContent.length > 0) {
                 currentSection.content.push({
@@ -386,21 +391,19 @@ function parseTextIntoSections(text, fileName) {
                 });
                 sections.push(currentSection);
             }
-            
-            // Start new section
+            // Clean numeric prefixes
+            const cleanHeader = headerCandidate.replace(/^\d+\.?\s*/, '').trim();
             currentSection = {
-                id: `${matchedHeader}-${createUniqueId()}`,
-                icon: getIconForSection(matchedHeader),
-                name: capitalizeFirstLetter(matchedHeader),
+                id: `${cleanHeader.replace(/\s+/g, '-')}-${createUniqueId()}`,
+                icon: getIconForSection(cleanHeader),
+                name: capitalizeFirstLetter(cleanHeader),
                 content: []
             };
             currentContent = [];
-        } else if (line.trim()) {
-            // Add line to current content
-            currentContent.push(line.trim());
+        } else if (trimmed) {
+            currentContent.push(trimmed);
         }
     }
-    
     // Save last section
     if (currentSection && currentContent.length > 0) {
         currentSection.content.push({
@@ -410,11 +413,10 @@ function parseTextIntoSections(text, fileName) {
         });
         sections.push(currentSection);
     }
-    
-    // If no sections were detected, put all content in one section
+    // If no sections were detected beyond header, put all content into a single content section
     if (sections.length === 1 && lines.length > 0) {
         sections.push({
-            id: 'content',
+            id: `content-${createUniqueId()}`,
             icon: getIconForSection('content'),
             name: 'Content',
             content: [
@@ -426,7 +428,6 @@ function parseTextIntoSections(text, fileName) {
             ]
         });
     }
-    
     return sections;
 }
 
@@ -435,28 +436,74 @@ function parseTextIntoSections(text, fileName) {
  */
 function formatTextContent(lines) {
     if (!lines || lines.length === 0) return '<p></p>';
-    
-    const paragraphs = [];
+    const items = [];
+    let currentList = null;
     let currentParagraph = [];
-    
-    for (const line of lines) {
-        if (line.trim() === '') {
-            if (currentParagraph.length > 0) {
-                paragraphs.push(currentParagraph.join(' '));
-                currentParagraph = [];
-            }
-        } else {
-            currentParagraph.push(line);
+    // Helper to flush accumulated paragraph
+    const flushParagraph = () => {
+        if (currentParagraph.length > 0) {
+            items.push({ type: 'p', text: currentParagraph.join(' ') });
+            currentParagraph = [];
         }
-    }
-    
-    // Add last paragraph
-    if (currentParagraph.length > 0) {
-        paragraphs.push(currentParagraph.join(' '));
-    }
-    
-    // Format as HTML
-    return paragraphs.map(p => `<p>${p}</p>`).join('');
+    };
+    // Helper to flush current list
+    const flushList = () => {
+        if (currentList) {
+            items.push(currentList);
+            currentList = null;
+        }
+    };
+    lines.forEach(line => {
+        if (/^\s*$/.test(line)) {
+            flushParagraph();
+            flushList();
+            return;
+        }
+        let match;
+        const trimmed = line.trim();
+        // Unordered list detection (hyphen, bullet or asterisk)
+        if ((match = trimmed.match(/^[-•*]\s*(.+)/))) {
+            if (!currentList || currentList.listType !== 'ul') {
+                flushParagraph();
+                flushList();
+                currentList = { listType: 'ul', items: [] };
+            }
+            currentList.items.push(match[1].trim());
+        } else if ((match = trimmed.match(/^(\d+)[\)\.\-]\s*(.+)/))) {
+            // Ordered list detection (1. or 1) or 1-)
+            if (!currentList || currentList.listType !== 'ol') {
+                flushParagraph();
+                flushList();
+                currentList = { listType: 'ol', items: [] };
+            }
+            currentList.items.push(match[2].trim());
+        } else {
+            flushList();
+            currentParagraph.push(trimmed);
+        }
+    });
+    flushParagraph();
+    flushList();
+    // Convert items to HTML using sanitizeHtml for safety
+    let html = '';
+    items.forEach(item => {
+        if (item.listType) {
+            const tag = item.listType === 'ul' ? 'ul' : 'ol';
+            html += `<${tag}>` + item.items.map(it => `<li>${sanitizeHtml(it)}</li>`).join('') + `</${tag}>`;
+        } else if (item.type === 'p') {
+            const text = item.text;
+            // Determine if the paragraph is mostly uppercase letters
+            const letters = text.replace(/[^A-Za-z]/g, '');
+            const uppercaseLetters = text.replace(/[^A-Z]/g, '');
+            const ratio = letters.length > 0 ? uppercaseLetters.length / letters.length : 0;
+            if (ratio > 0.7 && text.length < 200) {
+                html += `<p><strong>${sanitizeHtml(text)}</strong></p>`;
+            } else {
+                html += `<p>${sanitizeHtml(text)}</p>`;
+            }
+        }
+    });
+    return html;
 }
 
 // ===================================================

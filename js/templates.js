@@ -857,6 +857,98 @@ function suggestTemplate(extractedText) {
 }
 
 /**
+ * Analyze the intent and structure of a document to assist in template
+ * selection. This helper inspects the extracted text and counts
+ * occurrences of keywords associated with different document types. It
+ * also considers overall document length. The resulting scores are
+ * normalized to provide relative confidence values between 0 and 1.
+ *
+ * @param {string} extractedText The raw text extracted from the document
+ * @returns {Object} An object keyed by template id with a confidence score
+ */
+function analyzeDocumentIntent(extractedText) {
+    const scores = {};
+    if (!extractedText) return scores;
+    const text = extractedText.toLowerCase();
+    const length = text.replace(/\s+/g, '').length;
+    // Define the same patterns used in suggestTemplate but with
+    // calculated normalisation denominators.  The denominator is the
+    // maximum possible score (all keywords present).
+    const patterns = {
+        'medical-poster': {
+            keywords: ['abstract','methods','results','discussion','conclusion','background','clinical','study','patient','treatment','hypothesis','intervention','outcome'],
+            weight: 1.5
+        },
+        'academic-paper': {
+            keywords: ['research','methodology','findings','literature','hypothesis','analysis','journal','publication','theory','empirical','qualitative','quantitative'],
+            weight: 1.3
+        },
+        'event-page': {
+            keywords: ['conference','workshop','seminar','event','registration','schedule','speaker','agenda','venue','attendee','program','session'],
+            weight: 1.4
+        },
+        'product-launch': {
+            keywords: ['product','launch','features','benefits','pricing','demo','solution','release','announcement','innovation','unveiling'],
+            weight: 1.2
+        },
+        'company-profile': {
+            keywords: ['company','business','services','team','about us','contact','organization','mission','vision','values','corporate'],
+            weight: 1.1
+        },
+        'portfolio': {
+            keywords: ['portfolio','experience','projects','skills','cv','resume','about me','work','showcase','achievements'],
+            weight: 1.2
+        },
+        'landing-page': {
+            keywords: ['sign up','download','free trial','get started','call to action','conversion','offer','subscribe','limited time'],
+            weight: 1.0
+        }
+    };
+    Object.entries(patterns).forEach(([id, cfg]) => {
+        const maxScore = cfg.keywords.length * cfg.weight;
+        let score = 0;
+        cfg.keywords.forEach(keyword => {
+            if (text.includes(keyword)) score += cfg.weight;
+        });
+        // Adjust score based on document length: shorter documents favour landing pages
+        if (id === 'landing-page') {
+            if (length < 500) score += 0.5;
+            if (length < 200) score += 1;
+        } else {
+            if (length > 2000) score += 1;
+        }
+        const confidence = maxScore > 0 ? Math.min(score / maxScore, 1) : 0;
+        scores[id] = confidence;
+    });
+    return scores;
+}
+
+/**
+ * Suggest a template and return a confidence score. This function
+ * leverages analyseDocumentIntent() to rank templates. The highest
+ * scoring template is returned along with its confidence. If no
+ * template exceeds a minimal threshold, the blank template is
+ * recommended.
+ *
+ * @param {string} extractedText The raw text extracted from the document
+ * @returns {{ templateId: string, confidence: number }} Template id and confidence (0-1)
+ */
+function suggestTemplateWithConfidence(extractedText) {
+    const scores = analyzeDocumentIntent(extractedText);
+    let best = { id: 'blank', confidence: 0 };
+    Object.entries(scores).forEach(([id, confidence]) => {
+        if (confidence > best.confidence) {
+            best = { id, confidence };
+        }
+    });
+    // Require a minimal confidence to override blank
+    if (best.confidence < 0.15) {
+        return { templateId: 'blank', confidence: 0 };
+    }
+    return { templateId: best.id, confidence: best.confidence };
+}
+
+/**
  * Get template settings (color scheme, fonts, etc.)
  */
 function getTemplateSettings(templateId) {
@@ -988,6 +1080,9 @@ window.LWB_Templates = {
     // Template operations
     createProjectFromTemplate,
     suggestTemplate,
+    // Enhanced suggestion with confidence
+    suggestTemplateWithConfidence,
+    analyzeDocumentIntent,
     getTemplateSettings,
     getDefaultSettings,
     mergeContentWithTemplate,

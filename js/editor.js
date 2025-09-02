@@ -139,6 +139,9 @@ function createSectionElement(section, sectionIndex, project) {
                 <button class="btn btn-small btn-secondary" onclick="addImageToSection(${sectionIndex})">
                     + Add Image
                 </button>
+                <button class="btn btn-small btn-secondary" onclick="addHtmlToSection(${sectionIndex})">
+                    + Add HTML
+                </button>
             </div>
         </div>
     `;
@@ -331,16 +334,21 @@ document.addEventListener('click', function(event) {
     if (icon == null || sectionIndexStr == null) return;
     const idx = parseInt(sectionIndexStr, 10);
     if (Number.isNaN(idx)) return;
-    // Update the section's icon
-    const project = window.APP_STATE?.currentProject;
-    if (!project || !project.sections || !project.sections[idx]) return;
-    project.sections[idx].icon = icon;
-    // Re-render sections to reflect the active state and persist change
-    if (typeof renderSections === 'function') {
-        renderSections(project);
-    }
-    if (typeof updateProject === 'function') {
-        updateProject();
+    // Delegate to the existing selectEmoji helper so that UI updates,
+    // dropdown closing and active state management are handled consistently.
+    if (typeof window.selectEmoji === 'function') {
+        window.selectEmoji(idx, icon);
+    } else {
+        // Fallback: update icon directly if selectEmoji is unavailable
+        const project = window.APP_STATE?.currentProject;
+        if (!project || !project.sections || !project.sections[idx]) return;
+        project.sections[idx].icon = icon;
+        if (typeof renderSections === 'function') {
+            renderSections(project);
+        }
+        if (typeof updateProject === 'function') {
+            updateProject();
+        }
     }
     // Prevent further propagation (e.g. avoid closing accordion prematurely)
     event.stopPropagation();
@@ -395,6 +403,8 @@ function generateSectionContentHtml(section, sectionIndex) {
                 contentHtml += generateTextBlockHtml(content, sectionIndex, contentIndex, section.content.length);
             } else if (content.type === 'image') {
                 contentHtml += generateImageBlockHtml(content, sectionIndex, contentIndex, section.content.length);
+            } else if (content.type === 'html') {
+                contentHtml += generateHtmlBlockHtml(content, sectionIndex, contentIndex, section.content.length);
             }
         });
     }
@@ -418,11 +428,6 @@ function generateTextBlockHtml(content, sectionIndex, contentIndex, totalContent
                     <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'down')" ${contentIndex === totalContent - 1 ? 'disabled' : ''} title="Move down">↓</button>
                     <button class="icon-btn danger" onclick="deleteContent(${sectionIndex}, ${contentIndex})" title="Delete block">🗑</button>
                 </div>
-            </div>
-            <div class="html-toggle">
-                <input type="checkbox" id="html-${sectionIndex}-${contentIndex}" ${content.allowHtml ? 'checked' : ''} 
-                       onchange="toggleHtml(${sectionIndex}, ${contentIndex}, this.checked)">
-                <label for="html-${sectionIndex}-${contentIndex}">⚠️ Enable HTML Mode (Advanced users only)</label>
             </div>
             ${generateRichEditorHtml(sectionIndex, contentIndex, content.value || '')}
         </div>
@@ -458,6 +463,51 @@ function generateImageBlockHtml(content, sectionIndex, contentIndex, totalConten
                 <div class="image-caption-container">
                     <label class="image-caption-label">Caption (optional):</label>
                     ${generateCaptionEditorHtml(sectionIndex, contentIndex, content.caption || '')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generate HTML for an HTML content block
+ *
+ * This block provides a dedicated HTML editor separate from the rich text
+ * editor. Users can type raw HTML into a monospace textarea and see a
+ * sanitized live preview below. A warning reminds users that this mode is
+ * intended for advanced users and that the content will be sanitized on
+ * export and preview. The preview uses the same sanitization logic as
+ * exports to strip scripts and event handlers for security.
+ * @param {Object} content The content object (type: 'html')
+ * @param {number} sectionIndex Index of the section containing this block
+ * @param {number} contentIndex Index of this content block
+ * @param {number} totalContent Total number of content blocks in the section
+ */
+function generateHtmlBlockHtml(content, sectionIndex, contentIndex, totalContent) {
+    const contentId = content.id || createUniqueId();
+    // Escape the initial value for insertion into the textarea. We use
+    // escapeHtml here to avoid leaking HTML inside the textarea itself.
+    const escapedValue = escapeHtml(content.value || '');
+    // Sanitize the value for the live preview. This will remove scripts
+    // and inline event handlers.
+    const sanitizedPreview = sanitizeHtmlContent(content.value || '');
+    return `
+        <div class="content-block" data-content-id="${contentId}">
+            <div class="content-block-header">
+                <div class="content-block-title">&lt;/&gt; HTML Block ${contentIndex + 1}</div>
+                <div class="content-block-controls">
+                    <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'up')" ${contentIndex === 0 ? 'disabled' : ''} title="Move up">↑</button>
+                    <button class="icon-btn" onclick="moveContent(${sectionIndex}, ${contentIndex}, 'down')" ${contentIndex === totalContent - 1 ? 'disabled' : ''} title="Move down">↓</button>
+                    <button class="icon-btn danger" onclick="deleteContent(${sectionIndex}, ${contentIndex})" title="Delete block">🗑</button>
+                </div>
+            </div>
+            <div class="html-editor">
+                <textarea class="form-input" style="font-family: var(--font-mono); min-height: 120px; width: 100%;" id="html-editor-${sectionIndex}-${contentIndex}" oninput="updateHtmlContent(${sectionIndex}, ${contentIndex}, this.value)" placeholder="Enter raw HTML here...">${escapedValue}</textarea>
+                <div class="html-warning" style="margin-top: 6px; font-size: 12px; color: #b45309;">
+                    ⚠️ Advanced users only. Ensure HTML is safe and valid.
+                </div>
+                <div class="html-preview" id="html-preview-${sectionIndex}-${contentIndex}" style="margin-top: 12px; padding: 8px; border: 1px solid #e5e7eb; border-radius: var(--radius-md); background-color: #f9fafb; font-size: 14px;">
+                    ${sanitizedPreview || '<p style="color:#6b7280;">Live preview will appear here as you type...</p>'}
                 </div>
             </div>
         </div>
@@ -709,6 +759,34 @@ function addImageToSection(project, sectionIndex, onUpdate) {
 }
 
 /**
+ * Add HTML content block to section
+ *
+ * Creates a new content object of type 'html' with an empty value and
+ * allowRawHtml flag. After insertion, the section is re-rendered and
+ * expanded so the user can immediately start editing the block.
+ * @param {Object} project
+ * @param {number} sectionIndex
+ * @param {Function} onUpdate
+ */
+function addHtmlToSection(project, sectionIndex, onUpdate) {
+    if (!project.sections[sectionIndex].content) {
+        project.sections[sectionIndex].content = [];
+    }
+    project.sections[sectionIndex].content.push({
+        type: 'html',
+        value: '',
+        allowRawHtml: true,
+        id: createUniqueId()
+    });
+    const sectionId = project.sections[sectionIndex].id;
+    renderSections(project);
+    // Keep section expanded
+    expandSection(sectionId);
+    if (onUpdate) onUpdate();
+    if (window.LWB_Utils) window.LWB_Utils.showToast('HTML block added', 'success');
+}
+
+/**
  * Delete content from section
  */
 function deleteContent(project, sectionIndex, contentIndex, onUpdate) {
@@ -862,6 +940,31 @@ function updateContentValue(project, sectionIndex, contentIndex, value, onUpdate
 }
 
 /**
+ * Update HTML content value and refresh the live preview
+ *
+ * This helper updates the project's content value for a dedicated HTML
+ * block, sanitizes the value for display in the preview, and triggers
+ * any onUpdate callback. It is called by the textarea's oninput handler.
+ * @param {Object} project
+ * @param {number} sectionIndex
+ * @param {number} contentIndex
+ * @param {string} value
+ * @param {Function} onUpdate
+ */
+function updateHtmlContent(project, sectionIndex, contentIndex, value, onUpdate) {
+    if (project && project.sections[sectionIndex]) {
+        project.sections[sectionIndex].content[contentIndex].value = value;
+        // Update the live preview element if it exists
+        const preview = document.getElementById(`html-preview-${sectionIndex}-${contentIndex}`);
+        if (preview) {
+            const sanitized = sanitizeHtmlContent(value);
+            preview.innerHTML = sanitized || '<p style="color:#6b7280;">Live preview will appear here as you type...</p>';
+        }
+        if (onUpdate) onUpdate();
+    }
+}
+
+/**
  * Toggle HTML mode for content
  */
 function toggleHtml(project, sectionIndex, contentIndex, enabled, onUpdate) {
@@ -997,6 +1100,34 @@ function escapeHtml(text) {
 }
 
 /**
+ * Sanitize raw HTML to remove scripts and inline event handlers
+ *
+ * This helper is used for live previews within HTML blocks. It removes
+ * <script> tags entirely and strips any attributes starting with "on"
+ * (e.g., onclick) to prevent execution of arbitrary JavaScript. It does
+ * not encode the HTML itself; rather, it returns a safer version of
+ * whatever markup the user has entered. Use escapeHtml() when you need
+ * to display unrendered HTML text instead of executing it.
+ * @param {string} html
+ * @returns {string}
+ */
+function sanitizeHtmlContent(html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html || '';
+    // Remove script tags
+    temp.querySelectorAll('script').forEach(el => el.remove());
+    // Remove inline event handlers
+    temp.querySelectorAll('*').forEach(el => {
+        Array.from(el.attributes).forEach(attr => {
+            if (/^on/i.test(attr.name)) {
+                el.removeAttribute(attr.name);
+            }
+        });
+    });
+    return temp.innerHTML;
+}
+
+/**
  * Expand a specific section
  */
 function expandSection(sectionId) {
@@ -1029,10 +1160,11 @@ window.LWB_Editor = {
     // Content management
     addTextToSection,
     addImageToSection,
+    addHtmlToSection,
     deleteContent,
     moveContent,
     updateContentValue,
-    toggleHtml,
+    updateHtmlContent,
     
     // Rich text editing
     formatText,
@@ -1047,7 +1179,8 @@ window.LWB_Editor = {
     
     // Utilities
     createUniqueId,
-    escapeHtml
+    escapeHtml,
+    sanitizeHtmlContent
 };
 
 // Make new emoji functions globally available

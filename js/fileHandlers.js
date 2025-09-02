@@ -67,17 +67,139 @@ function handleFile(file, onSuccess, onError) {
  * Handle PDF file upload and text extraction
  */
 function handlePDF(file, onSuccess, onError) {
+    // If Web Workers are supported, delegate heavy processing to the
+    // documentProcessor worker. This prevents the UI from blocking
+    // during large file processing. If worker initialization fails or
+    // the browser does not support workers, fall back to the main
+    // thread implementation.
+    if (window.Worker) {
+        try {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+                // Initialize worker
+                const worker = new Worker('js/workers/documentProcessor.js');
+                const workerId = Date.now();
+                const cleanup = () => {
+                    try { worker.terminate(); } catch (err) { /* noop */ }
+                };
+                worker.onmessage = function(event) {
+                    const data = event.data || {};
+                    // Route progress updates to the loading UI
+                    if (data.type === 'progress') {
+                        if (typeof window.updateLoadingProgress === 'function') {
+                            const step = data.step || 'Processing';
+                            const progress = typeof data.progress === 'number' ? data.progress : 0;
+                            const message = data.message || '';
+                            window.updateLoadingProgress(step, progress, message);
+                        }
+                        return;
+                    }
+                    // Only handle messages matching our id
+                    if (data.id !== workerId) return;
+                    if (data.type === 'result' && Array.isArray(data.sections)) {
+                        // Success: return sections
+                        cleanup();
+                        // Update progress for final step
+                        if (typeof window.updateLoadingProgress === 'function') {
+                            window.updateLoadingProgress('Creating website', 0.95, 'Creating website...');
+                        }
+                        onSuccess(data.sections, file.name);
+                    } else if (data.type === 'error') {
+                        console.error('Worker error:', data.error);
+                        cleanup();
+                        // Fallback to main thread processing on error
+                        processPDFMainThread(file, onSuccess, onError);
+                    } else if (data.type === 'imageResult') {
+                        // Not used for PDF; ignore
+                        cleanup();
+                        processPDFMainThread(file, onSuccess, onError);
+                    }
+                };
+                worker.onerror = function(err) {
+                    console.error('Worker failed:', err);
+                    cleanup();
+                    processPDFMainThread(file, onSuccess, onError);
+                };
+                // Send file to worker
+                worker.postMessage({ id: workerId, type: 'processDocument', fileType: 'pdf', fileData: arrayBuffer, fileName: file.name });
+            };
+            reader.onerror = function() {
+                processPDFMainThread(file, onSuccess, onError);
+            };
+            reader.readAsArrayBuffer(file);
+        } catch (err) {
+            console.error('Worker setup error:', err);
+            // Fallback to main thread processing
+            processPDFMainThread(file, onSuccess, onError);
+        }
+    } else {
+        // Workers not supported; use main thread
+        processPDFMainThread(file, onSuccess, onError);
+    }
+}
+
+/**
+ * Main thread PDF processor. This function retains the previous
+ * synchronous implementation of handlePDF for browsers that do not
+ * support Web Workers or when the worker fails. It extracts text
+ * using pdf.js, evaluates the quality of extraction and falls back
+ * to OCR via Tesseract.js if necessary. Progress updates are
+ * emitted via window.updateLoadingProgress.
+ *
+ * @param {File} file The PDF file to process
+ * @param {function(Array, string)} onSuccess Callback with sections and filename
+ * @param {function(string)} onError Callback on error
+ */
+function processPDFMainThread(file, onSuccess, onError) {
     const reader = new FileReader();
-    
     reader.onload = function(e) {
         try {
+            // Update progress: extracting text
+            if (typeof window.updateLoadingProgress === 'function') {
+                window.updateLoadingProgress('Extracting text', 0.3, 'Extracting text from PDF...');
+            }
             const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(e.target.result) });
-            
             loadingTask.promise.then(function(pdf) {
-                extractTextFromPDF(pdf, file.name)
-                    .then(sections => {
-                        console.log('PDF sections extracted:', sections);
-                        onSuccess(sections, file.name);
+                _extractTextFromPDF(pdf, file.name)
+                    .then(async ({ sections, fullText, alphaRatio }) => {
+                        try {
+                            // Update progress: analyzing sections
+                            if (typeof window.updateLoadingProgress === 'function') {
+                                window.updateLoadingProgress('Analyzing sections', 0.6, 'Analyzing document structure...');
+                            }
+                            // If text quality is poor, fallback to OCR
+                            const poorQuality = (alphaRatio < 0.5) || (fullText.replace(/\s+/g, '').length < 100);
+                            if (poorQuality) {
+                                if (typeof window.updateLoadingProgress === 'function') {
+                                    window.updateLoadingProgress('Fallback OCR', 0.3, 'Low quality text detected. Performing OCR...');
+                                }
+                                try {
+                                    const ocrSections = await performOCRFallback(file);
+                                    if (typeof window.updateLoadingProgress === 'function') {
+                                        window.updateLoadingProgress('Creating website', 0.9, 'Creating website...');
+                                    }
+                                    onSuccess(ocrSections, file.name);
+                                } catch (ocrError) {
+                                    console.error('OCR fallback error:', ocrError);
+                                    if (typeof window.updateLoadingProgress === 'function') {
+                                        window.updateLoadingProgress('Creating website', 0.9, 'Creating website...');
+                                    }
+                                    onSuccess(sections, file.name);
+                                }
+                            } else {
+                                if (typeof window.updateLoadingProgress === 'function') {
+                                    window.updateLoadingProgress('Creating website', 0.9, 'Creating website...');
+                                }
+                                onSuccess(sections, file.name);
+                            }
+                        } catch (innerErr) {
+                            console.error('PDF post-processing error:', innerErr);
+                            if (typeof window.updateLoadingProgress === 'function') {
+                                window.updateLoadingProgress('Creating website', 0.9, 'Creating website...');
+                            }
+                            onSuccess(sections, file.name);
+                        }
                     })
                     .catch(error => {
                         console.error('PDF extraction error:', error);
@@ -85,58 +207,152 @@ function handlePDF(file, onSuccess, onError) {
                     });
             }).catch(function(reason) {
                 console.error('Error loading PDF:', reason);
-                // Fallback to basic processing
                 createBasicSections(file.name, onSuccess);
             });
         } catch (error) {
             console.error('PDF processing error:', error);
-            // Fallback to basic processing
             createBasicSections(file.name, onSuccess);
         }
     };
-    
     reader.onerror = function() {
         onError('Failed to read PDF file');
     };
-    
     reader.readAsArrayBuffer(file);
 }
 
 /**
  * Extract text from all pages of a PDF
  */
-async function extractTextFromPDF(pdf, fileName) {
+async function _extractTextFromPDF(pdf, fileName) {
     let fullText = '';
-    const pageTexts = [];
-    
-    // Extract text from each page
+    // Extract text from each page of the PDF.  We accumulate a
+    // single string `fullText` which will later be used to assess
+    // extraction quality.  PDF.js occasionally inserts strange
+    // characters or whitespace; we normalise by joining items with a
+    // space and inserting a newline when the y‑coordinate jumps.
     for (let i = 1; i <= pdf.numPages; i++) {
         try {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
-            
-            // Build page text with proper spacing
             let pageText = '';
             let lastY = null;
-            
             textContent.items.forEach(item => {
-                // Add line break if Y position changed significantly
                 if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
                     pageText += '\n';
                 }
                 pageText += item.str + ' ';
                 lastY = item.transform[5];
             });
-            
-            pageTexts.push(pageText);
             fullText += pageText + '\n\n';
         } catch (error) {
             console.error(`Error extracting text from page ${i}:`, error);
         }
     }
-    
-    // Parse the extracted text into sections
-    return parseTextIntoSections(fullText, fileName);
+    // Compute a simple quality metric.  We count the number of
+    // alphabetic characters and compare to the total number of
+    // non‑whitespace characters.  If there are very few letters
+    // relative to symbols or whitespace, this suggests the PDF
+    // contains mostly images or scanned content.  The ratio will be
+    // used by the caller to decide whether to fall back to OCR.
+    const alphaMatches = fullText.match(/[A-Za-z]/g) || [];
+    const nonSpaceLength = fullText.replace(/\s+/g, '').length;
+    const alphaRatio = nonSpaceLength > 0 ? (alphaMatches.length / nonSpaceLength) : 0;
+    // Parse into sections using the existing heuristic
+    const sections = parseTextIntoSections(fullText, fileName);
+    return { sections, fullText, alphaRatio };
+}
+
+/**
+ * Wrapper around the internal PDF text extraction function that
+ * preserves the original API.  Historically, extractTextFromPDF
+ * returned an array of sections only.  The internal
+ * implementation now returns additional metadata (the raw text
+ * and a quality score).  This wrapper unwraps the object and
+ * returns just the sections array to maintain compatibility with
+ * existing callers.
+ *
+ * @param {Object} pdf PDF document returned from pdfjsLib.getDocument().promise
+ * @param {string} fileName The file name being processed
+ * @returns {Promise<Array>} Array of section objects
+ */
+async function extractTextFromPDF(pdf, fileName) {
+    const { sections } = await _extractTextFromPDF(pdf, fileName);
+    return sections;
+}
+
+/**
+ * Perform an OCR fallback for scanned PDFs using Tesseract.js.
+ * This method renders each page of the PDF onto an off‑screen
+ * canvas and then feeds the resulting image into Tesseract.js to
+ * extract the text.  Progress updates are emitted via
+ * window.updateLoadingProgress if available.  The aggregated text
+ * is then parsed into sections using the existing parsing
+ * heuristics.
+ *
+ * @param {File} file The original PDF file supplied by the user
+ * @returns {Promise<Array>} A promise resolving to an array of sections
+ */
+async function performOCRFallback(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const uint8 = new Uint8Array(e.target.result);
+                const loadingTask = pdfjsLib.getDocument({ data: uint8 });
+                const pdf = await loadingTask.promise;
+                const numPages = pdf.numPages;
+                let combinedText = '';
+                for (let i = 1; i <= numPages; i++) {
+                    try {
+                        // Emit progress: rendering page
+                        if (typeof window.updateLoadingProgress === 'function') {
+                            const base = 0.3; // base progress when OCR fallback starts
+                            const fraction = 0.6 / numPages; // allocate 60% of progress to OCR
+                            const progress = base + (i - 1) * fraction;
+                            window.updateLoadingProgress(`Rendering page ${i}`, progress, `Rendering page ${i} of ${numPages}...`);
+                        }
+                        const page = await pdf.getPage(i);
+                        const viewport = page.getViewport({ scale: 2.0 });
+                        // Create an offscreen canvas
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        // Render the page into the canvas
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        const dataURL = canvas.toDataURL('image/png');
+                        // Recognize text using Tesseract.js
+                        if (typeof window.LWB_OCR !== 'undefined' && typeof window.LWB_OCR.processWithTesseract === 'function') {
+                            const ocrResult = await window.LWB_OCR.processWithTesseract(dataURL, {
+                                logger: m => {
+                                    if (typeof window.updateLoadingProgress === 'function') {
+                                        const base = 0.3 + (i - 1) * (0.6 / numPages);
+                                        const fraction = 0.6 / numPages;
+                                        const progress = base + (m.progress || 0) * fraction;
+                                        window.updateLoadingProgress('Reading text', progress, `Reading text on page ${i}...`);
+                                    }
+                                }
+                            });
+                            if (ocrResult && ocrResult.text) {
+                                combinedText += ocrResult.text + '\n\n';
+                            }
+                        }
+                    } catch (pageErr) {
+                        console.error('OCR fallback page error:', pageErr);
+                    }
+                }
+                // Parse aggregated text into sections
+                const sections = window.LWB_FileHandlers.parseTextIntoSections(combinedText, file.name);
+                resolve(sections);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = function(err) {
+            reject(err);
+        };
+        reader.readAsArrayBuffer(file);
+    });
 }
 
 // ===================================================
@@ -151,6 +367,10 @@ async function handlePPTX(file, onSuccess, onError) {
         if (typeof JSZip === 'undefined') {
             onError('PowerPoint processing library not loaded. Please refresh the page and try again.');
             return;
+        }
+        // Update progress: extracting slides
+        if (typeof window.updateLoadingProgress === 'function') {
+            window.updateLoadingProgress('Extracting slides', 0.4, 'Extracting slides...');
         }
         
         const zip = await JSZip.loadAsync(file);
@@ -215,8 +435,16 @@ async function handlePPTX(file, onSuccess, onError) {
             }
         }
         
+        // Update progress: processing content
+        if (typeof window.updateLoadingProgress === 'function') {
+            window.updateLoadingProgress('Processing content', 0.7, 'Processing content...');
+        }
         // Convert slides to sections
         const sections = convertPPTXToSections(slides, notes, file.name);
+        // Update progress: creating website
+        if (typeof window.updateLoadingProgress === 'function') {
+            window.updateLoadingProgress('Creating website', 0.9, 'Creating website...');
+        }
         onSuccess(sections, file.name);
         
     } catch (error) {
@@ -681,23 +909,87 @@ function handleImage(file, onSuccess, onError) {
         onError('Image file too large. Please use an image smaller than 10MB.');
         return;
     }
-    
+    // Update progress: preparing image
+    if (typeof window.updateLoadingProgress === 'function') {
+        window.updateLoadingProgress('Preparing image', 0.2, 'Preparing image...');
+    }
     const reader = new FileReader();
-    
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
-            const sections = createImagePosterSections(e.target.result, file.name);
-            onSuccess(sections, file.name);
+            const dataUrl = e.target.result;
+            // Perform OCR using Tesseract.js on the image
+            let ocrText = '';
+            let ocrConfidence = 0;
+            try {
+                if (typeof window.LWB_OCR !== 'undefined' && typeof window.LWB_OCR.processWithTesseract === 'function') {
+                    const ocrResult = await window.LWB_OCR.processWithTesseract(dataUrl, {
+                        logger: m => {
+                            if (typeof window.updateLoadingProgress === 'function') {
+                                // Allocate 50% of progress for OCR (from 0.2 to 0.7)
+                                const progress = 0.2 + (m.progress || 0) * 0.5;
+                                window.updateLoadingProgress('Reading text', progress, 'Reading text from image...');
+                            }
+                        }
+                    });
+                    if (ocrResult && ocrResult.text) {
+                        ocrText = ocrResult.text.trim();
+                        ocrConfidence = ocrResult.confidence || 0;
+                    }
+                }
+            } catch (ocrErr) {
+                console.error('Image OCR error:', ocrErr);
+            }
+            // Determine whether to use OCR text based on confidence and length
+            if (ocrText && ocrText.length > 20) {
+                // Create sections with extracted text and image
+                if (typeof window.updateLoadingProgress === 'function') {
+                    window.updateLoadingProgress('Processing content', 0.8, 'Processing content...');
+                }
+                const cleanFileName = file.name.replace(/\.[^/.]+$/, '');
+                const textSections = window.LWB_FileHandlers.parseTextIntoSections(ocrText, file.name);
+                // Prepend header and image sections similar to createImagePosterSections
+                const headerSection = {
+                    id: 'header',
+                    icon: '🖼️',
+                    name: 'Header',
+                    isHeader: true,
+                    content: [ { type: 'text', value: `<h1>${cleanFileName}</h1>`, allowHtml: false } ]
+                };
+                const imageSection = {
+                    id: 'image-section',
+                    icon: '📷',
+                    name: 'Poster Image',
+                    isHeader: false,
+                    content: [ { type: 'image', url: dataUrl, caption: 'Original image' } ]
+                };
+                const allSections = [ headerSection, imageSection ];
+                // Append OCR text sections (mark them as non-header)
+                textSections.forEach((sec, idx) => {
+                    // Avoid duplicating header
+                    if (sec.isHeader) return;
+                    // For OCR text sections, keep the icon and name
+                    allSections.push({
+                        id: `ocr-${idx}`,
+                        icon: sec.icon || '📝',
+                        name: sec.name || `Text ${idx + 1}`,
+                        isHeader: false,
+                        content: sec.content
+                    });
+                });
+                onSuccess(allSections, file.name);
+            } else {
+                // Fallback to original image poster sections
+                const sections = createImagePosterSections(dataUrl, file.name);
+                onSuccess(sections, file.name);
+            }
         } catch (error) {
             console.error('Image processing error:', error);
             onError('Failed to process image file');
         }
     };
-    
     reader.onerror = function() {
         onError('Failed to read image file');
     };
-    
     reader.readAsDataURL(file);
 }
 

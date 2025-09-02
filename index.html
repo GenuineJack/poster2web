@@ -9,6 +9,8 @@
     <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Tesseract.js for browser‑based OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     
     <!-- Set PDF.js worker -->
     <script>
@@ -126,6 +128,10 @@
                 <div class="loading-spinner"></div>
                 <h2 id="loadingTitle" class="loading-title">Processing your file</h2>
                 <p id="loadingMessage" class="loading-message">Extracting content and analyzing structure...</p>
+                <!-- Progress bar container. The bar itself will be updated via JS. Using inline styles and CSS variables ensures it inherits the existing design system without adding new classes. -->
+                <div id="loadingProgress" style="width:100%; height:8px; border-radius: var(--radius-lg); background: var(--muted); overflow: hidden; margin-top: 12px; display: none;">
+                    <div id="loadingProgressFill" style="height:100%; width:0%; background: var(--primary);"></div>
+                </div>
             </div>
         </div>
 

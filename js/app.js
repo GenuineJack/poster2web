@@ -111,6 +111,8 @@ function cacheDOMReferences() {
         // Loading elements
         loadingTitle: document.getElementById('loadingTitle'),
         loadingMessage: document.getElementById('loadingMessage'),
+        loadingProgress: document.getElementById('loadingProgress'),
+        loadingProgressFill: document.getElementById('loadingProgressFill'),
         
         // Editor elements
         backButton: document.getElementById('backButton'),
@@ -249,6 +251,12 @@ function showScreen(screenName) {
             }
         }
     });
+
+    // Hide the loading progress bar when leaving the loading screen
+    if (screenName !== 'loading' && DOM_REFS.loadingProgress) {
+        DOM_REFS.loadingProgress.style.display = 'none';
+        if (DOM_REFS.loadingProgressFill) DOM_REFS.loadingProgressFill.style.width = '0%';
+    }
     
     APP_STATE.currentScreen = screenName;
     
@@ -381,6 +389,30 @@ function handleFile(file) {
                 DOM_REFS.pdfName.textContent = fileName;
             }
             
+            // After processing, attempt template suggestion based on the extracted content
+            try {
+                // Concatenate all text and HTML content from sections for analysis
+                const allText = sections.map(sec => {
+                    return (sec.content || []).map(c => {
+                        if (c.type === 'text' || c.type === 'html') {
+                            // Strip HTML tags for analysis
+                            return (c.value || '').replace(/<[^>]+>/g, ' ');
+                        }
+                        return '';
+                    }).join(' ');
+                }).join(' ');
+                const suggestion = window.LWB_Templates?.suggestTemplateWithConfidence(allText);
+                if (suggestion && suggestion.templateId && suggestion.templateId !== 'blank') {
+                    const template = window.LWB_Templates.getTemplate(suggestion.templateId);
+                    if (template) {
+                        const pct = Math.round((suggestion.confidence || 0) * 100);
+                        window.LWB_Utils.showToast(`Suggested template: ${template.name} (${pct}% confidence)`, 'info', 6000);
+                    }
+                }
+            } catch (e) {
+                console.warn('Template suggestion failed:', e);
+            }
+
             // Show editor
             showScreen('editor');
             // Trigger a project update to refresh the preview and schedule an autosave
@@ -405,8 +437,44 @@ function handleFile(file) {
 function showLoadingScreen(title, message) {
     if (DOM_REFS.loadingTitle) DOM_REFS.loadingTitle.textContent = title;
     if (DOM_REFS.loadingMessage) DOM_REFS.loadingMessage.textContent = message;
+    // Reset progress bar to 0 and display it
+    if (DOM_REFS.loadingProgress && DOM_REFS.loadingProgressFill) {
+        DOM_REFS.loadingProgress.style.display = 'block';
+        DOM_REFS.loadingProgressFill.style.width = '0%';
+    }
     showScreen('loading');
 }
+
+/**
+ * Update the progress bar and messages shown on the loading screen.
+ * `step` updates the loading title, `progress` sets the bar width
+ * (0–1), and `message` updates the loading message. Any of these
+ * parameters may be omitted. The progress bar is revealed on first
+ * update.
+ *
+ * @param {string} step A short title describing the current step
+ * @param {number} progress A value between 0 and 1 indicating completion
+ * @param {string} message A descriptive message for the user
+ */
+function updateLoadingProgress(step, progress, message) {
+    // Show progress bar
+    if (DOM_REFS.loadingProgress) {
+        DOM_REFS.loadingProgress.style.display = 'block';
+    }
+    if (step && DOM_REFS.loadingTitle) {
+        DOM_REFS.loadingTitle.textContent = step;
+    }
+    if (message && DOM_REFS.loadingMessage) {
+        DOM_REFS.loadingMessage.textContent = message;
+    }
+    if (typeof progress === 'number' && DOM_REFS.loadingProgressFill) {
+        const pct = Math.min(Math.max(progress, 0), 1) * 100;
+        DOM_REFS.loadingProgressFill.style.width = pct + '%';
+    }
+}
+
+// Expose progress updater globally so other modules can emit progress
+window.updateLoadingProgress = updateLoadingProgress;
 
 // ===================================================
 // EDITOR MANAGEMENT
@@ -639,6 +707,23 @@ function updatePreview() {
             }, 100);
         }
     };
+}
+
+/**
+ * Sanitize HTML content for safe embedding in preview. Removes
+ * <script> tags and inline event handlers. This mirrors the
+ * sanitisation used in the export module but is defined here to
+ * avoid cross‑module dependencies.
+ *
+ * @param {string} html Raw HTML string
+ * @returns {string} Sanitised HTML
+ */
+function sanitizeHtmlContent(html) {
+    if (!html) return '';
+    let safe = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    safe = safe.replace(/ on\w+="[^"]*"/gi, '');
+    safe = safe.replace(/ on\w+='[^']*'/gi, '');
+    return safe;
 }
 
 /**
@@ -1036,7 +1121,9 @@ function generatePreviewSections() {
                     ${APP_STATE.currentProject.logoUrl ? `<div><img src="${APP_STATE.currentProject.logoUrl}" class="logo" alt="Logo"></div>` : ''}
                     ${section.content.map(content => {
                         if (content.type === 'text') {
-                            return content.allowHtml ? content.value : `<div>${content.value}</div>`;
+                            return content.allowHtml ? sanitizeHtmlContent(content.value) : `<div>${content.value}</div>`;
+                        } else if (content.type === 'html') {
+                            return sanitizeHtmlContent(content.value);
                         }
                         return '';
                     }).join('')}
@@ -1051,6 +1138,9 @@ function generatePreviewSections() {
                     ${section.content.map(content => {
                         if (content.type === 'text') {
                             return `<div class="content-block">${content.value}</div>`;
+                        } else if (content.type === 'html') {
+                            // Sanitize HTML content before injecting into preview
+                            return `<div class="content-block">${sanitizeHtmlContent(content.value)}</div>`;
                         } else if (content.type === 'image' && content.url) {
                             return `
                                 <div class="image-block">
@@ -1827,11 +1917,21 @@ window.toggleSection = window.LWB_Editor.toggleSection;
 
 window.addTextToSection = (sectionIndex) => window.LWB_Editor.addTextToSection(APP_STATE.currentProject, sectionIndex, updateProject);
 window.addImageToSection = (sectionIndex) => window.LWB_Editor.addImageToSection(APP_STATE.currentProject, sectionIndex, updateProject);
+// Expose HTML block controls
+window.addHtmlToSection = (sectionIndex) => window.LWB_Editor.addHtmlToSection(APP_STATE.currentProject, sectionIndex, updateProject);
 window.deleteContent = (sectionIndex, contentIndex) => window.LWB_Editor.deleteContent(APP_STATE.currentProject, sectionIndex, contentIndex, updateProject);
 window.moveContent = (sectionIndex, contentIndex, direction) => window.LWB_Editor.moveContent(APP_STATE.currentProject, sectionIndex, contentIndex, direction, updateProject);
 
 window.updateContentValue = (sectionIndex, contentIndex, value) => window.LWB_Editor.updateContentValue(APP_STATE.currentProject, sectionIndex, contentIndex, value, updateProject);
-window.toggleHtml = (sectionIndex, contentIndex, enabled) => window.LWB_Editor.toggleHtml(APP_STATE.currentProject, sectionIndex, contentIndex, enabled, updateProject);
+// Legacy toggleHtml wrapper remains for backwards compatibility; it simply warns but does nothing now
+window.toggleHtml = (sectionIndex, contentIndex, enabled) => {
+    if (enabled && window.LWB_Utils) {
+        window.LWB_Utils.showToast('⚠️ HTML mode is deprecated. Use dedicated HTML blocks instead.', 'error');
+    }
+    // no-op
+};
+// Wrapper for updating HTML block content
+window.updateHtmlContent = (sectionIndex, contentIndex, value) => window.LWB_Editor.updateHtmlContent(APP_STATE.currentProject, sectionIndex, contentIndex, value, updateProject);
 window.formatText = (command, sectionIndex, contentIndex, value) => window.LWB_Editor.formatText(command, sectionIndex, contentIndex, value, APP_STATE.currentProject, updateProject);
 window.insertLink = (sectionIndex, contentIndex) => window.LWB_Editor.insertLink(sectionIndex, contentIndex, APP_STATE.currentProject, updateProject);
 window.formatCaption = (command, sectionIndex, contentIndex) => window.LWB_Editor.formatCaption(command, sectionIndex, contentIndex, APP_STATE.currentProject, updateProject);

@@ -596,7 +596,10 @@ function generateSectionsHtml(project, settings) {
             ${project.logoUrl ? `<div><img src="${project.logoUrl}" class="logo" alt="Logo"></div>` : ''}
             ${section.content.map(content => {
                 if (content.type === 'text') {
-                    return content.allowHtml ? content.value : `<div>${content.value}</div>`;
+                    // Allow raw HTML only if explicitly flagged; otherwise wrap in a div
+                    return content.allowHtml ? sanitizeHtmlContent(content.value) : `<div>${content.value}</div>`;
+                } else if (content.type === 'html') {
+                    return sanitizeHtmlContent(content.value);
                 }
                 return '';
             }).join('')}
@@ -609,6 +612,8 @@ function generateSectionsHtml(project, settings) {
             ${section.content.map(content => {
                 if (content.type === 'text') {
                     return `<div class="content-block">${content.value}</div>`;
+                } else if (content.type === 'html') {
+                    return `<div class="content-block">${sanitizeHtmlContent(content.value)}</div>`;
                 } else if (content.type === 'image' && content.url) {
                     return `
             <div class="image-block">
@@ -1180,6 +1185,27 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Sanitize HTML content for safe embedding in exports and previews.
+ * This function strips out potentially dangerous tags such as
+ * <script> and event handler attributes. It does not escape all
+ * markup; instead it removes scripts while preserving markup
+ * structure. Use this when injecting user‑provided HTML into the
+ * exported site.
+ *
+ * @param {string} html Raw HTML string
+ * @returns {string} Sanitised HTML
+ */
+function sanitizeHtmlContent(html) {
+    if (!html) return '';
+    // Remove <script> tags and their content
+    let safe = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    // Remove inline event handlers (onmouseover, onclick, etc.)
+    safe = safe.replace(/ on\w+="[^"]*"/gi, '');
+    safe = safe.replace(/ on\w+='[^']*'/gi, '');
+    return safe;
 }
 
 /**

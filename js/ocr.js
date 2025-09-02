@@ -29,6 +29,60 @@ const OCR_CONFIG = {
 };
 
 // ===================================================
+// TESSERACT.JS OCR
+// ===================================================
+
+/**
+ * Recognize text from an image using Tesseract.js.
+ * This helper abstracts Tesseract.js and supports progress callbacks
+ * via the `logger` option. It automatically maps ISO language codes
+ * defined in OCR_CONFIG.LANGUAGE_HINTS to the corresponding
+ * Tesseract language codes. If no language is specified, English
+ * will be used by default. The returned object includes the
+ * extracted text, a confidence score (0–1), and the primary
+ * language used.
+ *
+ * @param {string|HTMLImageElement|HTMLCanvasElement|File|Blob} imageData
+ *        The source image. This can be a Data URL, an image element,
+ *        a canvas element, or a File/Blob.
+ * @param {Object} options
+ *        Additional options to pass to Tesseract.js. Supports
+ *        `logger` for progress updates and `lang` to override
+ *        automatic language detection.
+ * @returns {Promise<{text: string, confidence: number, language: string}>}
+ */
+async function processWithTesseract(imageData, options = {}) {
+    if (typeof Tesseract === 'undefined' || !Tesseract.recognize) {
+        throw new Error('Tesseract.js is not loaded. Please ensure the CDN script is included.');
+    }
+    // Build language string.  Use provided option first, then OCR_CONFIG hints.
+    let languages = 'eng';
+    if (options.lang) {
+        languages = options.lang;
+    } else if (Array.isArray(OCR_CONFIG.LANGUAGE_HINTS) && OCR_CONFIG.LANGUAGE_HINTS.length > 0) {
+        // Map ISO 639-1 codes to Tesseract language codes where possible
+        const langMap = { en: 'eng', es: 'spa', fr: 'fra', de: 'deu', it: 'ita', pt: 'por' };
+        languages = OCR_CONFIG.LANGUAGE_HINTS.map(l => langMap[l] || l).join('+');
+    }
+    // Compose options with a no-op logger by default
+    const combinedOptions = Object.assign({ logger: () => {} }, options);
+    // Invoke Tesseract
+    const result = await Tesseract.recognize(imageData, languages, combinedOptions);
+    const { data } = result;
+    const text = (data && data.text) ? data.text : '';
+    let confidence = 0;
+    if (data && Array.isArray(data.words) && data.words.length > 0) {
+        const totalConf = data.words.reduce((sum, w) => sum + (w.confidence || 0), 0);
+        confidence = totalConf / data.words.length;
+    } else if (data && typeof data.confidence === 'number') {
+        confidence = data.confidence;
+    }
+    // Derive language from requested languages (use first component)
+    const language = languages.split('+')[0] || 'eng';
+    return { text, confidence, language };
+}
+
+// ===================================================
 // API KEY MANAGEMENT
 // ===================================================
 
@@ -515,6 +569,7 @@ window.LWB_OCR = {
     // Processing
     processImage,
     processImageWithOCR,
+    processWithTesseract,
     
     // UI
     showOCRSettings,
