@@ -323,36 +323,8 @@ window.toggleSectionIcon = toggleSectionIcon;
 // preview.  This avoids scope and escaping issues from inline event
 // attributes and ensures skin-tone modifiers or special unicode
 // characters are processed correctly.
-document.addEventListener('click', function(event) {
-    const target = event.target;
-    if (!target) return;
-    // Find a button with icon data attributes
-    const button = target.closest('button.icon-btn[data-icon][data-section-index]');
-    if (!button) return;
-    const icon = button.getAttribute('data-icon');
-    const sectionIndexStr = button.getAttribute('data-section-index');
-    if (icon == null || sectionIndexStr == null) return;
-    const idx = parseInt(sectionIndexStr, 10);
-    if (Number.isNaN(idx)) return;
-    // Delegate to the existing selectEmoji helper so that UI updates,
-    // dropdown closing and active state management are handled consistently.
-    if (typeof window.selectEmoji === 'function') {
-        window.selectEmoji(idx, icon);
-    } else {
-        // Fallback: update icon directly if selectEmoji is unavailable
-        const project = window.APP_STATE?.currentProject;
-        if (!project || !project.sections || !project.sections[idx]) return;
-        project.sections[idx].icon = icon;
-        if (typeof renderSections === 'function') {
-            renderSections(project);
-        }
-        if (typeof updateProject === 'function') {
-            updateProject();
-        }
-    }
-    // Prevent further propagation (e.g. avoid closing accordion prematurely)
-    event.stopPropagation();
-});
+
+// Fixed emoji picker click handler - THIS MAKES YOUR EMOJI BUTTONS WORK! document.addEventListener('click', function(event) { const target = event.target; if (!target) return; // This looks specifically for emoji buttons (not other buttons) const button = target.closest('.emoji-group-icons button[data-icon][data-section-index]'); if (!button) return; const icon = button.getAttribute('data-icon'); const sectionIndexStr = button.getAttribute('data-section-index'); if (icon == null || sectionIndexStr == null) return; const idx = parseInt(sectionIndexStr, 10); if (Number.isNaN(idx)) return; // Call the selectEmoji function to actually change the emoji if (typeof window.selectEmoji === 'function') { window.selectEmoji(idx, icon); } else { // If selectEmoji isn't found, try to make it work anyway const project = window.APP_STATE?.currentProject; if (!project || !project.sections || !project.sections[idx]) return; project.sections[idx].icon = icon; if (typeof renderSections === 'function') { renderSections(project); } if (typeof updateProject === 'function') { updateProject(); } } event.stopPropagation(); });
 
 // No delegated event handler is required for the Show Icon toggle.  Each
 // checkbox uses an inline onchange handler defined in createSectionElement()
