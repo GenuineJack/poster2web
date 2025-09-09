@@ -1,5 +1,5 @@
 /* ==================================================
-   SITEWEAVE - COMPLETE STYLES
+   SITEWEAVE // POSTER2WEB - COMPLETE STYLES
    ================================================== */
 
 /* ==================================================
@@ -37,7 +37,7 @@
   /* Typography System */
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   
   /* Border Radius System */
   --radius: 0.625rem;
@@ -117,12 +117,16 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
     font-family: var(--font-sans);
     background: var(--background);
     color: var(--foreground);
     line-height: 1.6;
-    min-height: 100vh;
+    min-height: 100dvh; /* mobile-safe viewport */
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
@@ -133,6 +137,7 @@ body {
 
 .main-content {
     flex: 1;
+    min-height: 0; /* allow children to manage their own scroll */
 }
 
 /* Hide file inputs by default */
@@ -145,7 +150,7 @@ input[type="file"] {
    ================================================== */
 .screen {
     display: none;
-    min-height: calc(100vh - 120px);
+    min-height: calc(100dvh - 120px); /* mobile-safe */
     animation: fadeIn 0.3s ease-out;
 }
 
@@ -415,7 +420,7 @@ input[type="file"] {
     display: none;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
+    min-height: 100dvh; /* mobile-safe */
 }
 
 .loading-screen.active {
@@ -623,7 +628,7 @@ input[type="file"] {
 .editor-content {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: calc(100vh - 200px);
+    min-height: calc(100dvh - 200px); /* mobile-safe */
     background: var(--card);
 }
 
@@ -631,14 +636,14 @@ input[type="file"] {
     padding: 32px;
     border-right: 1px solid var(--border);
     overflow-y: auto;
-    max-height: calc(100vh - 200px);
+    max-height: calc(100dvh - 200px); /* mobile-safe */
 }
 
 .preview-section {
     padding: 32px;
     background: var(--muted);
     overflow-y: auto;
-    max-height: calc(100vh - 200px);
+    max-height: calc(100dvh - 200px); /* mobile-safe */
 }
 
 /* Custom scrollbar */
@@ -1035,9 +1040,13 @@ input[type="file"] {
     transition: max-height 0.3s ease-out, padding 0.3s ease-out;
 }
 
+/* IMPORTANT FIX:
+   Remove artificial 2000px ceiling so long sections aren't clipped.
+   Let the content take natural height when expanded. */
 .section-content.expanded {
-    max-height: 2000px;
+    max-height: none; /* was 2000px */
     padding: 24px;
+    overflow: visible;
 }
 
 /* ==================================================
@@ -1160,18 +1169,11 @@ input[type="file"] {
 .preview-container {
     background: var(--card);
     border-radius: var(--radius-xl);
-    /* Allow the preview to scroll internally so the top of the website is visible.
-       Previously this container used overflow: hidden which caused the top of the
-       previewed page to be cut off beneath the faux browser header. Setting
-       overflow-y: auto ensures that users can scroll to the very top of
-       the embedded website. */
+    /* Allow the preview to scroll internally so the top of the website is visible. */
     overflow-y: auto;
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--border);
     height: 100%;
-    /* Remove explicit max-height: the parent .preview-section controls the height.
-       Keeping a max-height here caused the header portion of the preview to be
-       clipped when rendered. */
     display: flex;
     flex-direction: column;
 }
@@ -1184,9 +1186,6 @@ input[type="file"] {
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
-    /* Keep the preview header visible while scrolling the preview.  Using
-       sticky positioning ensures the faux browser chrome remains in
-       view without overlaying the website content beneath it. */
     position: sticky;
     top: 0;
     z-index: 2;
@@ -1220,11 +1219,7 @@ input[type="file"] {
     background: white;
 }
 
-/* Wrapper around the preview iframe inside the editor.  By adding a
-   top margin equal to the faux browser header height we prevent the
-   website content from being hidden beneath the header.  Using flex
-   ensures the iframe expands to fill the remaining space in the
-   preview container. */
+/* Wrapper around the preview iframe inside the editor. */
 .preview-iframe-wrapper {
     margin-top: var(--previewToolbarH, 56px);
     flex: 1;
