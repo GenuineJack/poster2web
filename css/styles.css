@@ -1944,3 +1944,56 @@ body.dark-mode .footer {
     background: #f0fdf4;
     border-color: #16a34a;
 }
+
+/* ===== Scroll Fixes: make the Content column the only scroller ===== */
+
+/* Make the editor grid a fixed-height workspace (mobile-safe). */
+.editor-content{
+  height: calc(100dvh - 200px) !important;  /* was min-height */
+  min-height: 0 !important;                 /* allow children to shrink/scroll */
+  align-items: start;                        /* prevent stretch glitches */
+}
+
+/* The left column (Content) should scroll independently. */
+.form-section{
+  height: 100% !important;                   /* was max-height */
+  max-height: none !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Right column preview matches the same behavior (for parity). */
+.preview-section{
+  height: 100% !important;                   /* was max-height */
+  max-height: none !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+}
+
+/* Some builds wrap the section editors in an inner container. Make sure that
+   wrapper never traps height or scrolling. If you don’t have these nodes,
+   these rules are harmless no-ops. */
+#editorScreen,
+.tab-content.active,
+#sectionsContainer{
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Allow expanded section bodies to grow without a hard ceiling. */
+.section-content.expanded{
+  max-height: none !important;               /* in case an earlier rule re-applies */
+  overflow: visible !important;
+}
+
+/* Rich-text areas used for captions can grow as needed; remove caps that
+   can push add-content controls out of reach. */
+.rich-editor .editor-content-area{
+  max-height: none !important;               /* remove the 400px cap for long entries */
+  overflow-y: visible !important;
+}
+
+/* Safety: never lock page scroll globally. */
+body.no-scroll{ overflow: auto !important; position: static !important; }
